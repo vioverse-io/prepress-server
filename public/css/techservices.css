@@ -1,0 +1,401 @@
+/* ════════════════════════════════════════════════════════════════
+   TECH SERVICES DEPARTMENT — Accent + section styling
+   Spec: documentation/TS_SECTIONS_SPEC.md
+   Blue — visually distinct from Prepress red.
+   ════════════════════════════════════════════════════════════════ */
+.dept-techservices {
+  --dept-accent:       #1e3a5f;
+  --dept-accent-hover: #162d4a;
+  --dept-accent-soft:  #e8eef5;
+  --dept-accent-muted: #7a9bbf;
+
+  /* Label column width — retunable per D2. Prepress default is min-width:90px;
+     TS labels are longer (e.g., "Drop phantom carrier routes?") so we widen. */
+  --ts-label-col-width: 180px;
+}
+
+/* Wider label column across the entire TS panel, and allow wrap for long labels.
+   Scoped to .dept-techservices so Prepress is unaffected. */
+.dept-techservices .field-label {
+  min-width: var(--ts-label-col-width);
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/* ── Inline hint inside a label ── */
+.dept-techservices .field-hint {
+  display: inline;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  /* Use ink-soft (not muted) so hints stay legible at 11px; both themes OK */
+  color: var(--ink-soft);
+  opacity: 0.85;
+  white-space: normal;
+}
+[data-theme="dark"] .dept-techservices .field-hint {
+  color: var(--ink-soft);
+  opacity: 0.9;
+}
+
+/* ── Sub-group header (D7): small bold label + thin divider above ── */
+.dept-techservices .field-subgroup-header {
+  grid-column: 1 / -1;
+  margin: 10px 0 2px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dept-accent);
+}
+
+/* First subgroup header in a section shouldn't push extra space */
+.dept-techservices .field-subgroup-header:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* ── Indent levels for nested items ── */
+.dept-techservices .field-indent-1 {
+  padding-left: 24px;
+}
+.dept-techservices .field-indent-2 {
+  padding-left: 48px;
+}
+
+/* ── Checkbox-only rows (D6): span full row width, no input column ── */
+.dept-techservices .field-row--cb-only .field-input {
+  display: none;
+}
+/* Let the label take the row width so vertical rhythm matches text rows */
+.dept-techservices .field-row--cb-only .field-label {
+  flex: 1;
+}
+
+/* ── Italic help text under a group ── */
+.dept-techservices .field-help-text {
+  margin: 4px 0 10px 60px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-soft);
+  opacity: 0.85;
+  line-height: 1.4;
+}
+[data-theme="dark"] .dept-techservices .field-help-text {
+  color: var(--ink-soft);
+  opacity: 0.9;
+}
+
+/* ── Section-level help link row (e.g., CASS reference) ── */
+.dept-techservices .section-help-link-row {
+  padding: 6px 0 10px 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.dept-techservices .section-help-link {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--dept-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dept-techservices .section-help-link:hover {
+  color: var(--dept-accent-hover);
+}
+.dept-techservices .section-help-link::before {
+  content: '\1F517'; /* link glyph */
+  margin-right: 5px;
+  font-size: 11px;
+}
+
+/* ── "PLACEHOLDER" badge on placeholder section titles ── */
+.dept-techservices .placeholder-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: white;
+  background: var(--dept-accent-muted);
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
+/* Placeholder sections get a subtle muted treatment when collapsed */
+.dept-techservices .section-group.placeholder-section.collapsed .section-title {
+  opacity: 0.75;
+}
+
+/* ── D3: Meeting-required attention style ──
+   Small ⚠ icon + heavier label weight. No background fill (per D3). */
+.dept-techservices .field-row--meeting-required .field-label {
+  font-weight: 700;
+  color: var(--dept-accent);
+  font-size: 14px;
+}
+.dept-techservices .field-row--meeting-required .meeting-icon {
+  display: inline-block;
+  margin-right: 6px;
+  color: #d97706; /* amber — semantic warning hue */
+  font-size: 15px;
+}
+
+/* ── Meeting attendees multi-select widget ── */
+.meeting-attendees {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meeting-attendees-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  min-height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  align-self: flex-start;
+  min-width: 220px;
+}
+.meeting-attendees-btn:hover {
+  border-color: var(--accent-muted);
+}
+.meeting-attendees-btn.is-open {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-input-focus);
+}
+.meeting-attendees-btn-arrow {
+  color: var(--ink-muted);
+  font-size: 11px;
+  transition: transform 0.15s;
+}
+.meeting-attendees-btn.is-open .meeting-attendees-btn-arrow {
+  transform: rotate(180deg);
+}
+
+.meeting-attendees-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  padding: 10px;
+  background: var(--surface-raised);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.meeting-attendees-panel[hidden] {
+  display: none;
+}
+
+.meeting-attendees-search {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+}
+.meeting-attendees-search:focus {
+  border-color: var(--accent);
+}
+
+.meeting-attendees-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.meeting-attendee-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink);
+  transition: background 0.1s;
+}
+.meeting-attendee-item:hover {
+  background: var(--dept-accent-soft);
+}
+.meeting-attendee-item input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--dept-accent);
+  cursor: pointer;
+}
+.meeting-attendee-item.is-hidden {
+  display: none;
+}
+.meeting-attendee-role {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  opacity: 0.8;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.meeting-attendees-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.meeting-attendees-actions button {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  transition: background 0.15s, border-color 0.15s;
+}
+.meeting-attendees-clear {
+  /* ghost */
+}
+.meeting-attendees-clear:hover {
+  border-color: var(--accent-muted);
+}
+.meeting-attendees-apply {
+  background: var(--dept-accent) !important;
+  border-color: var(--dept-accent) !important;
+  color: white !important;
+}
+.meeting-attendees-apply:hover {
+  background: var(--dept-accent-hover) !important;
+  border-color: var(--dept-accent-hover) !important;
+}
+
+.meeting-attendees-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+.meeting-attendees-chips:empty {
+  display: none;
+}
+.meeting-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dept-accent);
+  background: var(--dept-accent-soft);
+  border: 1px solid var(--dept-accent-muted);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Dark-mode tuning for the picker */
+[data-theme="dark"] .meeting-attendees-btn {
+  background: #1a1f2b;
+  color: #dcdcdc;
+  border-color: var(--border);
+}
+[data-theme="dark"] .meeting-attendees-panel {
+  background: #1a1f2b;
+  border-color: var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .meeting-attendees-search {
+  background: #232836;
+  color: #dcdcdc;
+}
+[data-theme="dark"] .meeting-attendee-item {
+  color: #dcdcdc;
+}
+[data-theme="dark"] .meeting-attendee-item:hover {
+  background: rgba(122, 155, 191, 0.18);
+}
+[data-theme="dark"] .meeting-attendee-role {
+  color: #b0ab9a;
+  border-color: rgba(255,255,255,0.12);
+}
+[data-theme="dark"] .meeting-attendees-actions button {
+  background: #232836;
+  color: #dcdcdc;
+  border-color: var(--border);
+}
+[data-theme="dark"] .meeting-chip {
+  color: #dcdcdc;
+  background: rgba(122, 155, 191, 0.20);
+  border-color: rgba(122, 155, 191, 0.45);
+}
+
+/* Print: expand the widget to a readable text list. Hide the button + panel,
+   show chips inline so the selected attendees appear cleanly on the PDF. */
+@media print {
+  .meeting-attendees-btn,
+  .meeting-attendees-panel {
+    display: none !important;
+  }
+  .meeting-attendees-chips {
+    display: inline;
+    margin-top: 0;
+  }
+  .meeting-chip {
+    border: none;
+    background: transparent;
+    padding: 0 4px 0 0;
+    color: #000;
+    font-weight: 600;
+  }
+  .meeting-chip:not(:last-child)::after {
+    content: ',';
+  }
+}
+
+/* ── Print-mode adjustments for TS-specific elements ── */
+@media print {
+  .dept-techservices .field-subgroup-header {
+    font-size: 10px;
+    margin: 6px 0 2px 0;
+    padding-top: 4px;
+    border-top: 1px solid #ccc;
+  }
+  .dept-techservices .section-help-link-row,
+  .dept-techservices .field-help-text,
+  .dept-techservices .placeholder-badge {
+    display: none !important;
+  }
+  .dept-techservices .field-indent-1 { padding-left: 12px; }
+  .dept-techservices .field-indent-2 { padding-left: 24px; }
+  .dept-techservices .field-row--meeting-required .field-label {
+    color: #000 !important;
+  }
+}

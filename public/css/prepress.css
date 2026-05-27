@@ -1,0 +1,10 @@
+/* ═══════════════════════════════════════════════════���════════════
+   PREPRESS DEPARTMENT — Accent Override
+   PMS 1797 C (Red) — matches the existing app accent
+   ════════════════════════════��═══════════════════════════════════ */
+.dept-prepress {
+  --dept-accent:       #CB333B;
+  --dept-accent-hover: #a8292f;
+  --dept-accent-soft:  #fceced;
+  --dept-accent-muted: #e8999d;
+}

@@ -1,0 +1,14 @@
+{
+  "name": "prepress-job-instructions",
+  "version": "1.0.0",
+  "description": "Prepress job instructions tool with shared SQLite database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0"
+  }
+}

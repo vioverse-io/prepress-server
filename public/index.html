@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Order Instructions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="screen">
+<link href="lib/quill.snow.css" rel="stylesheet">
+<script src="lib/quill.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/prepress.css">
+<link rel="stylesheet" href="css/techservices.css">
+<script>
+  // FOUC guard — apply saved theme before first paint so dark users
+  // don't flash a light page on load.
+  (function () {
+    try {
+      var t = localStorage.getItem('wo-theme');
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+
+<div class="backup-toast" id="backupToast"></div>
+
+<!-- ═══ NAVIGATION BAR ═══ -->
+<nav class="nav-bar">
+  <span class="nav-home-btn" onclick="showNoJobState()" title="Back to work orders"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+  <span class="nav-divider"></span>
+  <span class="nav-title">Work Order Instructions</span>
+  <div class="nav-spacer"></div>
+
+  <input type="checkbox" id="masterCheckbox" style="display:none;">
+  <div class="nav-actions">
+    <button class="nav-btn primary" onclick="openNewJobModal()" title="New Work Order"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <div class="print-dropdown">
+      <button class="nav-btn" onclick="togglePrintDropdown()" title="Print"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> &#9662;</button>
+      <div class="print-dropdown-content" id="printDropdown">
+        <div class="print-dropdown-item" onclick="printChecklist()">Print Current</div>
+        <div class="print-dropdown-item" onclick="printAllComponents()">Print All Components</div>
+        <div class="print-dropdown-item" onclick="printAllComponentsCombined()">Print All as One PDF</div>
+      </div>
+    </div>
+    <span class="nav-divider"></span>
+    <button class="nav-btn btn-undo" onclick="undo()" title="Undo (Ctrl+Z)">&#8630;</button>
+    <button class="nav-btn btn-redo" onclick="redo()" title="Redo (Ctrl+Y)">&#8631;</button>
+    <span class="nav-divider"></span>
+    <div class="more-dropdown">
+      <button class="nav-btn" onclick="toggleMoreDropdown()" title="More actions">&#8943;</button>
+      <div class="more-dropdown-content" id="moreDropdown">
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); openEditJobModal()">Edit Job Details</div>
+        <div class="more-dropdown-sep"></div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateJob()">Duplicate Job</div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateComponent()">Duplicate Component</div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); saveAsTemplate()">Save as Template</div>
+        <div class="more-dropdown-sep"></div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); archiveJob()">Archive</div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); resetChecklist()">Reset</div>
+        <div class="more-dropdown-item more-dropdown-danger" onclick="document.getElementById('moreDropdown').classList.remove('open'); deleteJob()">Delete</div>
+        <div class="more-dropdown-sep"></div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); document.getElementById('importFile').click()">Import</div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); exportJobs()">Export</div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); restoreFromBackupUI()">Restore from Backup</div>
+        <div class="more-dropdown-sep"></div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); toggleTextSize()">
+          <span class="text-scale-btn"><span class="sm">A</span><span class="lg">A</span></span>
+          Text Size
+        </div>
+        <div class="more-dropdown-sep"></div>
+      </div>
+    </div>
+    <button class="nav-btn" onclick="archiveJob()" title="Archive this job"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></button>
+    <button class="nav-btn" onclick="openHelpModal()" title="User Guide"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>
+    <button class="nav-btn" onclick="toggleTheme()" title="Toggle dark mode">
+      <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <span class="nav-divider"></span>
+    <input type="text" id="searchInput" placeholder="Search checklist..." class="nav-search" disabled>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJobs(event)">
+  </div>
+
+  <div class="nav-spacer"></div>
+
+  <a href="https://www.compu-mail.com/" target="_blank" class="nav-brand-label">COMPU-MAIL, LLC</a>
+  <div class="profile-wrapper">
+    <button class="profile-btn" id="profileBtn" onclick="toggleProfilePopover(event)" title="Profile">
+      <svg id="profileBtnIcon" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+    </button>
+    <div class="profile-popover" id="profilePopover">
+      <div class="profile-popover-title">Your Profile</div>
+      <div class="profile-photo-area">
+        <div class="profile-crop-circle" id="profileCropCircle">
+          <img id="profileCropImg" draggable="false" style="display:none;">
+          <div class="profile-crop-placeholder" id="profileCropPlaceholder" onclick="triggerPhotoUpload()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Add Photo</span>
+          </div>
+          <div class="profile-crop-initial" id="profileCropInitial" style="display:none;"></div>
+        </div>
+        <input type="range" class="profile-zoom" id="profileZoom" min="1" max="3" step="0.02" value="1" style="display:none;">
+        <div class="profile-photo-actions" id="profilePhotoActions">
+          <button type="button" class="profile-photo-btn" onclick="triggerPhotoUpload()">Choose Photo</button>
+          <button type="button" class="profile-photo-btn profile-photo-remove" id="profileRemoveBtn" onclick="removePhoto()" style="display:none;">Remove</button>
+        </div>
+      </div>
+      <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
+      <input type="text" class="profile-name-input" id="profileNameInput" placeholder="Your nickname..." maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()">
+      <button class="profile-save-btn" onclick="saveProfile()">Save</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ JOB HEADER (billboard) ═══ -->
+<div class="job-header" id="printHeader" style="display:none;">
+  <!-- Lock banner (server-based locking — hidden until internal server is available) -->
+  <div class="lock-banner" id="lockBanner" style="display:none;">
+    <svg class="lock-banner-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <span class="lock-banner-text"><strong id="lockBannerUser">Someone</strong> is currently editing this job</span>
+    <div class="lock-banner-actions">
+      <button class="lock-banner-btn lock-banner-readonly" onclick="setReadOnly(true)">View Read-Only</button>
+      <button class="lock-banner-btn lock-banner-edit" onclick="dismissLockBanner()">Edit Anyway</button>
+    </div>
+  </div>
+  <div class="job-fields-row">
+    <div class="job-field job-field--jobnum">
+      <span class="job-field-label">Job#</span>
+      <span class="job-field-value job-field-value--mono" id="printJobNumber"></span>
+    </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--editable" data-field="clientName" onclick="startInlineEdit(this)">
+      <span class="job-field-label">Customer</span>
+      <span class="job-field-value" id="printClientName"></span>
+      <svg class="inline-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--editable" data-field="csrName" onclick="startInlineEdit(this)">
+      <span class="job-field-label">CSR</span>
+      <span class="job-field-value" id="printCSRName"></span>
+      <svg class="inline-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--editable" data-field="componentName" onclick="startInlineEdit(this)">
+      <span class="job-field-label">Component</span>
+      <span class="job-field-value" id="printComponent"></span>
+      <svg class="inline-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--editable job-field--signoff" data-field="signoffDue" id="printSignoffDueField" onclick="startInlineEdit(this)">
+      <span class="job-field-label">Signoff due</span>
+      <span class="job-field-value job-field-value--stacked">
+        <span class="signoff-due-date" id="printSignoffDueDate"></span>
+        <span class="signoff-due-time" id="printSignoffDueTime"></span>
+      </span>
+      <svg class="inline-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--editable job-field--assignee" data-field="assignedTo" onclick="startInlineEdit(this)">
+      <span class="job-field-label">Assigned to</span>
+      <span class="job-field-value" id="printAssignedTo"></span>
+      <svg class="inline-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--version" data-field="version">
+      <span class="job-field-label">Version</span>
+      <div class="version-display">
+        <span class="version-code" id="printVersion" onclick="openVersionPicker()">---</span>
+        <button class="version-inc-btn" onclick="incrementVersion()" title="Increment version">+</button>
+      </div>
+      <div class="version-picker" id="versionPicker">
+        <div class="version-picker-row">
+          <select class="version-letter" id="versionLetter">
+            <option value="">--</option>
+          </select>
+          <select class="version-number" id="versionNumber">
+            <option value="">--</option>
+          </select>
+        </div>
+        <div class="version-picker-actions">
+          <button class="version-set-btn" onclick="setVersion()">Set</button>
+          <button class="version-clear-btn" onclick="clearVersion()">Clear</button>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="readonly-badge" id="readonlyBadge" style="display:none;">READ-ONLY</div>
+    <div class="required-badge" id="requiredBadge"></div>
+    <div class="job-field" style="justify-content:center;flex-shrink:0;">
+      <button class="header-close-btn" onclick="closeJobWithWarning()" title="Close job">&times;</button>
+    </div>
+  </div>
+  <div class="job-timestamps">
+    Created <span id="printCreated"></span> &middot; Modified <span id="printModified"></span><span id="headerModifiedWrap" style="display:none;"> &middot; Header edited <span id="printHeaderModified"></span></span><span id="duplicatedFromWrap" style="display:none;"> &middot; Duplicated from <span id="printDuplicatedFrom" style="font-weight:600;color:var(--accent);"></span></span><span id="deletionLogWrap" style="display:none;"> &middot; <span class="deletion-log-dropdown"><span class="deletion-log-label" onclick="this.parentElement.classList.toggle('open')">Deleted (<span id="deletionLogCount">0</span>) &#9662;</span><div class="deletion-log-list" id="deletionLogList"></div></span></span>
+  </div>
+</div>
+
+<!-- ═══ PRINT-ONLY STACKED HEADER ═══ -->
+<div class="print-stacked" id="printStacked">
+  <div class="print-heading" id="printHeading">Prepress Instructions</div>
+  <div class="print-grid">
+    <div class="print-field">
+      <div class="print-label">Job #</div>
+      <div class="print-value print-value--mono" id="pf-jobnum"></div>
+    </div>
+    <div class="print-field">
+      <div class="print-label">Client</div>
+      <div class="print-value" id="pf-client"></div>
+    </div>
+    <div class="print-field">
+      <div class="print-label">CSR</div>
+      <div class="print-value" id="pf-csr"></div>
+    </div>
+    <div class="print-field" id="pf-project-row">
+      <div class="print-label">Project</div>
+      <div class="print-value" id="pf-project"></div>
+    </div>
+    <div class="print-field">
+      <div class="print-label">Component</div>
+      <div class="print-value" id="pf-component"></div>
+    </div>
+    <div class="print-field" id="pf-signoff-row">
+      <div class="print-label">Signoff due</div>
+      <div class="print-value" id="pf-signoff"></div>
+    </div>
+  </div>
+  <div class="print-meta">
+    <span>Created: <span id="pf-created"></span></span>
+    <span>Modified: <span id="pf-modified"></span></span>
+    <span id="pf-header-modified-wrap" style="display:none;">Header edited: <span id="pf-header-modified"></span></span>
+    <span id="pf-duplicated-wrap" style="display:none;">Duplicated from: <span id="pf-duplicated"></span></span>
+  </div>
+</div>
+
+<!-- ═══ NO JOB STATE ═══ -->
+<div class="no-job" id="noJobState">
+  <div class="no-job-left">
+    <h2 id="landingGreeting" class="greeting-heading">Select or Create a Work Order</h2>
+    <p>Choose an existing order or start a new one</p>
+    <div class="no-job-actions">
+      <button onclick="openNewJobModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Work Order</button>
+      <div class="job-selector-custom" style="width:100%;">
+        <button class="job-selector-button" type="button" id="jobSelectorButton">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <span>Browse Work Orders</span>
+        </button>
+        <div class="job-selector-dropdown" id="jobSelectorDropdown">
+          <div class="job-selector-header">
+            <input type="checkbox" id="selectAllJobsCheckbox">
+            <label for="selectAllJobsCheckbox">Select All</label>
+          </div>
+          <div class="job-list-container" id="jobListContainer"></div>
+          <div class="job-selector-actions">
+            <button class="btn-delete-selected" type="button" id="deleteSelectedBtn" onclick="deleteSelectedJobs()" disabled>Delete Selected (0)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="job-search-wrapper">
+      <input type="text" id="jobSearchInput" class="job-search-input" placeholder="Search by job # or client..." autocomplete="off">
+      <div class="job-search-results" id="jobSearchResults"></div>
+    </div>
+  </div>
+  <div class="landing-filters">
+    <div class="landing-filters-label">Filter</div>
+    <div class="filter-group">
+      <label for="filterCSR">CSR</label>
+      <select id="filterCSR" onchange="applyLandingFilters()">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterClient">Client</label>
+      <input type="text" id="filterClient" placeholder="Client name..." autocomplete="off" oninput="applyLandingFilters()">
+    </div>
+    <div class="filter-group">
+      <label for="filterDateFrom">From</label>
+      <input type="date" id="filterDateFrom" onchange="applyLandingFilters()">
+    </div>
+    <div class="filter-group">
+      <label for="filterDateTo">To</label>
+      <input type="date" id="filterDateTo" onchange="applyLandingFilters()">
+    </div>
+    <button class="filter-clear-btn" onclick="clearLandingFilters()" title="Clear all filters">Clear</button>
+    <span class="filter-result-count" id="filterResultCount"></span>
+  </div>
+  <div class="recent-jobs" id="recentJobs"></div>
+  <div class="archived-jobs" id="archivedJobs"></div>
+  <div class="templates-col" id="templatesCol"></div>
+</div>
+
+<!-- ═══ NEW JOB MODAL ═══ -->
+<div id="newJobModal" class="modal">
+  <div class="modal-content">
+    <h2>Create New Job</h2>
+    <form id="newJobForm">
+      <div class="modal-two-col">
+        <div class="modal-col">
+      <div class="form-group"><label>Job Number *</label><input type="text" id="jobNumber" required></div>
+      <div class="form-group"><label>Project Name</label><input type="text" id="jobDescription" placeholder="e.g., Spring Mailer, Annual Report"></div>
+      <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="clientName" required>
+    <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
+    <div class="quick-pick-menu" data-options='[
+      "3AM Innovations",
+      "AAA",
+      "AAA Central Penn",
+      "AAA Hoosiers",
+      "AAA Hudson Valley",
+      "AAA Minneapolis",
+      "AAA North Penn",
+      "AAA Northampton",
+      "AAA Northway",
+      "AAA Reading Berks",
+      "AAA Schuylkill",
+      "AAA Shelby County",
+      "Akron Rule",
+      "Ad Specialty Solutions LLC",
+      "Adirondack Explorer",
+      "AIIM",
+      "Albany Law School",
+      "Al Sigl",
+      "Allied Motion",
+      "AMC",
+      "American Atheist",
+      "Amherst Memorial Chapel",
+      "Amplified",
+      "And More Marketing",
+      "Apex Dental",
+      "ARIC",
+      "ArtPark",
+      "B and L",
+      "Beaches",
+      "Berenson",
+      "Bills Foundation",
+      "BMG",
+      "Bob Weaver Motorsports",
+      "Bonadio Group",
+      "BPO",
+      "Brochures Unlimited",
+      "Buffalo Academyof Science",
+      "Buffalo Audubon Society",
+      "Buffalo Bills",
+      "Buffalo Canvas",
+      "BuffaloCleaning",
+      "Buffalo Fine Arts",
+      "Buffalo History Museum",
+      "Buffalo Museum of Science",
+      "Buffalo Oral Surgery",
+      "Buffalo Regals Hockey",
+      "Buffalo Sabres",
+      "Burchfield Penney",
+      "Burgio & Campofelice",
+      "Cambria Fire",
+      "Campbell Travel",
+      "CanisusCollege",
+      "CarX",
+      "Catholic Charities",
+      "Catholic Health System",
+      "CCFCS",
+      "Center for Inquiry Periodical",
+      "Charlie Butcher",
+      "Childrens Hospital Fdn",
+      "City Action",
+      "CMI",
+      "Coast Technology",
+      "Community Bank",
+      "Compu-Mail",
+      "CPS",
+      "CTG Group",
+      "Data-Mation",
+      "Dave Cacciatore",
+      "Delaware North",
+      "Delta Sonic",
+      "DesignNY",
+      "DiCamillo",
+      "DiMinos Tops",
+      "Direct Security",
+      "Dixon Schwabl",
+      "East House",
+      "Elderwood",
+      "EnSol",
+      "Erie 1 Boces",
+      "ERW",
+      "Estiator",
+      "Evergreen Health",
+      "EZFlats",
+      "Fastenal",
+      "First Amherst",
+      "Foodlink",
+      "FR Remley",
+      "Freed Maxick",
+      "Frontier",
+      "Garrett Leather",
+      "Gelia",
+      "GEVA",
+      "Getzville Fire Company",
+      "Global Indemnity",
+      "Grand Island CSD",
+      "Grand Island Chamber",
+      "GreenKnight Landscaping",
+      "Hope Rising",
+      "Horizon Health",
+      "Hospice",
+      "Hub Scrap",
+      "Hudson Park River Trust",
+      "ICC Commonwealth",
+      "Independent Health",
+      "Independent Health Foundation",
+      "Independent Health Fulfillment",
+      "Independent Health Self Funded Services",
+      "JFD Sports",
+      "JLawrence",
+      "Junior League",
+      "Kahana Feld",
+      "Kelleher Law",
+      "Ken Ton Family Support",
+      "Kingdom Bound",
+      "Krown Rust Control",
+      "Krystal Klear",
+      "KSV",
+      "Lancaster Fire",
+      "Lancaster Football",
+      "LewistonCouncil on the Arts",
+      "Lewiston Fire Co",
+      "Lewiston Kiwanis",
+      "LS&S",
+      "Luminus",
+      "Main Place Liberty",
+      "Manzella",
+      "Massena Hospital",
+      "Microhealth",
+      "Mr Smith Agency",
+      "NAMI",
+      "Napolis",
+      "Natures Lawn",
+      "Neighbor to Neighbor",
+      "NERG",
+      "NewsMax",
+      "NF City Market",
+      "NFRRS",
+      "NFTA",
+      "Night Out",
+      "Niagara Cty Deputy Sheriff",
+      "Niagara Falls Country Club",
+      "Niagara Falls Public Library",
+      "Niagara Falls Sports Hall Of Fame",
+      "Niagara Hospice",
+      "Niagara Pumpkin",
+      "Niagara University",
+      "Northtown Automotive",
+      "NTS",
+      "NYSWA",
+      "OLV",
+      "Orleans County",
+      "Park Ave",
+      "PDM",
+      "Pediatric Specialty Care",
+      "PGP",
+      "Print2Web",
+      "Proforma",
+      "Propitious Media",
+      "Razorfish",
+      "Revive Wesleyan",
+      "Ricotta & Ricotta",
+      "RMF",
+      "Robert Garey",
+      "Roswell",
+      "Roy-Hart",
+      "Sacred Heart",
+      "Safetec",
+      "SaveonSP",
+      "Seneca Gaming",
+      "Seneca Niagara",
+      "Service Collaboration WNY",
+      "Short N Numbers",
+      "Soflo Clean Water",
+      "Spaghetti & Meatballs",
+      "St. Adalberts",
+      "St. Francis Prep",
+      "St. Lawrence",
+      "Stannp",
+      "Sunday Driver",
+      "SUNY BuffState",
+      "Switzer Precision",
+      "TASC",
+      "Taste of Buffalo",
+      "The Chapel",
+      "The Martin Group",
+      "Tim Thomas",
+      "Tops Markets",
+      "Transitowne",
+      "Twin District",
+      "UB",
+      "UB Architecture",
+      "UB Campus Dining",
+      "UB Career Design",
+      "UB Orientation",
+      "UB School Of Nursing",
+      "University Libraries",
+      "Unreal Digital",
+      "USA Insulation",
+      "Veterans Outreach Center",
+      "Virginia Wireless",
+      "Vivrelle",
+      "Walden Galleria",
+      "Western Division FCU",
+      "West Seneca West",
+      "Wilcor",
+      "Williamsville North",
+      "Wind Spirit People And Places",
+      "Wireless Infrastructure",
+      "WNY Heritage",
+      "WNYIL",
+      "YMCA"
+    ]'></div>
+  </div>
+</div>
+
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rich Owen", "Rosette Jowsey", "Sharon Woodruff", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group">
+        <label>Components (select all that apply)</label>
+        <div class="components-select" id="componentsSelect"></div>
+      </div>
+        </div><!-- /modal-col left -->
+        <div class="modal-col">
+      <div class="form-group">
+        <label>Assigned to (Tech Services)</label>
+        <select id="newAssignedToTechservices" class="assignee-select">
+          <option value="">Unassigned</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="signoffDueDateTechservices">Tech Services signoff due</label>
+        <div class="signoff-due-row">
+          <input type="date" id="signoffDueDateTechservices">
+          <select id="signoffDueTimeTechservices">
+            <option value="">Time&hellip;</option>
+            <option value="8:30 AM">8:30 AM</option>
+            <option value="9:00 AM">9:00 AM</option>
+            <option value="9:30 AM">9:30 AM</option>
+            <option value="10:00 AM">10:00 AM</option>
+            <option value="10:30 AM">10:30 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="11:30 AM">11:30 AM</option>
+            <option value="12:00 PM">12:00 PM</option>
+            <option value="12:30 PM">12:30 PM</option>
+            <option value="1:00 PM">1:00 PM</option>
+            <option value="1:30 PM">1:30 PM</option>
+            <option value="2:00 PM">2:00 PM</option>
+            <option value="2:30 PM">2:30 PM</option>
+            <option value="3:00 PM">3:00 PM</option>
+            <option value="3:30 PM">3:30 PM</option>
+            <option value="4:00 PM">4:00 PM</option>
+            <option value="4:30 PM">4:30 PM</option>
+            <option value="5:00 PM">5:00 PM</option>
+          </select>
+        </div>
+        <small class="form-hint">Internal signoff target. Not a contractual deadline.</small>
+      </div>
+      <div class="form-group">
+        <label>Assigned to (Prepress)</label>
+        <select id="newAssignedToPrepress" class="assignee-select">
+          <option value="">Unassigned</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="signoffDueDatePrepress">Prepress signoff due</label>
+        <div class="signoff-due-row">
+          <input type="date" id="signoffDueDatePrepress">
+          <select id="signoffDueTimePrepress">
+            <option value="">Time&hellip;</option>
+            <option value="8:30 AM">8:30 AM</option>
+            <option value="9:00 AM">9:00 AM</option>
+            <option value="9:30 AM">9:30 AM</option>
+            <option value="10:00 AM">10:00 AM</option>
+            <option value="10:30 AM">10:30 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="11:30 AM">11:30 AM</option>
+            <option value="12:00 PM">12:00 PM</option>
+            <option value="12:30 PM">12:30 PM</option>
+            <option value="1:00 PM">1:00 PM</option>
+            <option value="1:30 PM">1:30 PM</option>
+            <option value="2:00 PM">2:00 PM</option>
+            <option value="2:30 PM">2:30 PM</option>
+            <option value="3:00 PM">3:00 PM</option>
+            <option value="3:30 PM">3:30 PM</option>
+            <option value="4:00 PM">4:00 PM</option>
+            <option value="4:30 PM">4:30 PM</option>
+            <option value="5:00 PM">5:00 PM</option>
+          </select>
+        </div>
+        <small class="form-hint">Internal signoff target. Not a contractual deadline.</small>
+      </div>
+        </div><!-- /modal-col right -->
+      </div><!-- /modal-two-col -->
+      <div class="modal-buttons">
+        <button type="button" class="btn-cancel" onclick="closeNewJobModal()">Cancel</button>
+        <button type="submit" class="btn-save">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ ADD COMPONENT MODAL ═══ -->
+<div id="addComponentModal" class="modal">
+  <div class="modal-content">
+    <h2>Add Component</h2>
+    <form id="addComponentForm">
+      <div class="form-group">
+        <label>From Template</label>
+        <select id="addComponentTemplate" class="template-select" onchange="onTemplateSelected(this)">
+          <option value="">None (blank component)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Component Name *</label>
+        <div class="quick-pick-wrapper">
+          <input type="text" id="newComponentName" required placeholder="e.g., Letter, Envelope">
+          <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
+          <div class="quick-pick-menu" data-options='["6x9.5\u2033 Envelope", "9x12 Flat", "A7 Envelope", "Booklet", "Buckslip", "Label", "Letter", "No. 9 BRE Envelope", "No. 10 Envelope", "No. 10 Envelope Window", "Postcard", "Remit", "Self-Mailer", "Sticker"]'></div>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" class="btn-cancel" onclick="closeAddComponentModal()">Cancel</button>
+        <button type="submit" class="btn-save">Add Component</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ EDIT JOB MODAL ═══ -->
+<div id="editJobModal" class="modal">
+  <div class="modal-content">
+    <h2>Edit Job</h2>
+    <form id="editJobForm">
+      <div class="form-group"><label>Job Number *</label><input type="text" id="editJobNumber" required></div>
+      <div class="form-group"><label>Project Name</label><input type="text" id="editJobDescription"></div>
+      <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="editClientName" required autocomplete="off">
+        <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
+        <div class="quick-pick-menu" data-options='[
+          "3AM Innovations","AAA","AAA Central Penn","AAA Hoosiers","AAA Hudson Valley","AAA Minneapolis","AAA North Penn","AAA Northampton","AAA Northway","AAA Reading Berks","AAA Schuylkill","AAA Shelby County","Akron Rule","Ad Specialty Solutions LLC","Adirondack Explorer","AIIM","Albany Law School","Al Sigl","Allied Motion","AMC","American Atheist","Amherst Memorial Chapel","Amplified","And More Marketing","Apex Dental","ARIC","ArtPark","B and L","Beaches","Berenson","Bills Foundation","BMG","Bob Weaver Motorsports","Bonadio Group","BPO","Brochures Unlimited","Buffalo Academyof Science","Buffalo Audubon Society","Buffalo Bills","Buffalo Canvas","BuffaloCleaning","Buffalo Fine Arts","Buffalo History Museum","Buffalo Museum of Science","Buffalo Oral Surgery","Buffalo Regals Hockey","Buffalo Sabres","Burchfield Penney","Burgio & Campofelice","Cambria Fire","Campbell Travel","CanisusCollege","CarX","Catholic Charities","Catholic Health System","CCFCS","Center for Inquiry Periodical","Charlie Butcher","Childrens Hospital Fdn","City Action","CMI","Coast Technology","Community Bank","Compu-Mail","CPS","CTG Group","Data-Mation","Dave Cacciatore","Delaware North","Delta Sonic","DesignNY","DiCamillo","DiMinos Tops","Direct Security","Dixon Schwabl","East House","Elderwood","EnSol","Erie 1 Boces","ERW","Estiator","Evergreen Health","EZFlats","Fastenal","First Amherst","Foodlink","FR Remley","Freed Maxick","Frontier","Garrett Leather","Gelia","GEVA","Getzville Fire Company","Global Indemnity","Grand Island CSD","Grand Island Chamber","GreenKnight Landscaping","Hope Rising","Horizon Health","Hospice","Hub Scrap","Hudson Park River Trust","ICC Commonwealth","Independent Health","Independent Health Foundation","Independent Health Fulfillment","Independent Health Self Funded Services","JFD Sports","JLawrence","Junior League","Kahana Feld","Kelleher Law","Ken Ton Family Support","Kingdom Bound","Krown Rust Control","Krystal Klear","KSV","Lancaster Fire","Lancaster Football","LewistonCouncil on the Arts","Lewiston Fire Co","Lewiston Kiwanis","LS&S","Luminus","Main Place Liberty","Manzella","Massena Hospital","Microhealth","Mr Smith Agency","NAMI","Napolis","Natures Lawn","Neighbor to Neighbor","NERG","NewsMax","NF City Market","NFRRS","NFTA","Night Out","Niagara Cty Deputy Sheriff","Niagara Falls Country Club","Niagara Falls Public Library","Niagara Falls Sports Hall Of Fame","Niagara Hospice","Niagara Pumpkin","Niagara University","Northtown Automotive","NTS","NYSWA","OLV","Orleans County","Park Ave","PDM","Pediatric Specialty Care","PGP","Print2Web","Proforma","Propitious Media","Razorfish","Revive Wesleyan","Ricotta & Ricotta","RMF","Robert Garey","Roswell","Roy-Hart","Sacred Heart","Safetec","SaveonSP","Seneca Gaming","Seneca Niagara","Service Collaboration WNY","Short N Numbers","Soflo Clean Water","Spaghetti & Meatballs","St. Adalberts","St. Francis Prep","St. Lawrence","Stannp","Sunday Driver","SUNY BuffState","Switzer Precision","TASC","Taste of Buffalo","The Chapel","The Martin Group","Tim Thomas","Tops Markets","Transitowne","Twin District","UB","UB Architecture","UB Campus Dining","UB Career Design","UB Orientation","UB School Of Nursing","University Libraries","Unreal Digital","USA Insulation","Veterans Outreach Center","Virginia Wireless","Vivrelle","Walden Galleria","Western Division FCU","West Seneca West","Wilcor","Williamsville North","Wind Spirit People And Places","Wireless Infrastructure","WNY Heritage","WNYIL","YMCA"
+        ]'></div>
+      </div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rich Owen", "Rosette Jowsey", "Sharon Woodruff", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group">
+        <label>Assigned to (Prepress)</label>
+        <select id="editAssignedToPrepress" class="assignee-select">
+          <option value="">Unassigned</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Assigned to (Tech Services)</label>
+        <select id="editAssignedToTechservices" class="assignee-select">
+          <option value="">Unassigned</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" class="btn-cancel" onclick="closeEditJobModal()">Cancel</button>
+        <button type="submit" class="btn-save">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ EXPORT MODAL ═══ -->
+<div id="exportModal" class="modal">
+  <div class="modal-content" style="max-width:520px;">
+    <h2>Export Jobs</h2>
+    <div class="export-toggle-row">
+      <label><input type="checkbox" id="exportSelectAll" onchange="toggleExportSelectAll(this.checked)"> Select All</label>
+    </div>
+    <div class="export-job-list" id="exportJobList"></div>
+    <div class="modal-buttons">
+      <button type="button" class="btn-cancel" onclick="closeExportModal()">Cancel</button>
+      <button type="button" class="btn-save" id="exportConfirmBtn" onclick="doExport()">Export (0)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ IMPORT SUMMARY MODAL ═══ -->
+<div id="importModal" class="modal">
+  <div class="modal-content" style="max-width:520px;">
+    <h2>Import Jobs</h2>
+    <div class="import-summary" id="importSummary"></div>
+    <div class="import-job-list" id="importJobList"></div>
+    <div class="modal-buttons">
+      <button type="button" class="btn-cancel" onclick="closeImportModal()">Cancel</button>
+      <button type="button" class="btn-save" id="importConfirmBtn" onclick="confirmImport()">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ QC WARNING MODAL ═══ -->
+<div id="qcWarningModal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="qc-warning-header" id="qcWarningHeader"></div>
+    <ul class="qc-warning-list" id="qcWarningList"></ul>
+    <div class="modal-buttons">
+      <button type="button" class="btn-cancel" id="qcWarningCancel">Cancel</button>
+      <button type="button" class="btn-save" id="qcWarningProceed">Print Anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOP CONTENT ═══ -->
+<div id="sopContent" style="display:none;">
+  <div class="component-tabs-wrapper">
+    <div class="component-tabs" id="componentTabs"></div>
+  </div>
+  <!-- ── Department Tabs ── -->
+  <div class="dept-tabs" id="deptTabs">
+    <button class="dept-tab active" data-dept="prepress" onclick="switchDepartment('prepress')"><span class="dept-dot"></span>Prepress</button>
+    <button class="dept-tab" data-dept="techservices" onclick="switchDepartment('techservices')"><span class="dept-dot"></span>Tech Services</button>
+  </div>
+  <div class="main-content">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title" id="sidebarTitle">Prepress Instructions</span>
+        <button class="generate-specs-btn" onclick="generateSummaryBlock()" title="Generate summary from the active department's checked fields"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate</button>
+      </div>
+      <div class="qc-inline-strip" id="qcInlineStrip" style="display:none;">
+        <div class="qc-inline-header">
+          <span class="qc-inline-icon">&#9888;</span>
+          <span class="qc-inline-label">QC Issues</span>
+          <button class="qc-inline-close" onclick="document.getElementById('qcInlineStrip').style.display='none'" title="Dismiss">&times;</button>
+        </div>
+        <ul class="qc-inline-list" id="qcInlineList"></ul>
+      </div>
+      <div class="csr-editor">
+        <div id="quill-toolbar">
+          <span class="ql-formats">
+            <button class="ql-bold" title="Bold"></button>
+            <button class="ql-italic" title="Italic"></button>
+            <button class="ql-underline" title="Underline"></button>
+            <button class="ql-background" value="#fef3a0" title="Highlight"></button>
+            <button class="ql-list" value="bullet" title="Bullet list"></button>
+            <select class="ql-size" title="Text size">
+              <option value="small">Small</option>
+              <option selected>Normal</option>
+              <option value="large">Large</option>
+            </select>
+          </span>
+        </div>
+        <div id="csrInstructions"></div>
+      </div>
+      <div class="sidebar-footer" id="sidebarFooter">
+        <div class="revision-header" onclick="toggleRevisionTimeline()" title="Click to show/hide revisions">
+          <span class="revision-collapse-arrow" aria-hidden="true">&#9662;</span>
+          <span class="revision-label">Revisions</span>
+          <span class="revision-count" id="revisionCount"></span>
+        </div>
+        <div class="csr-history" id="instructionsHistory"></div>
+        <div class="revision-timeline" id="revisionTimeline"></div>
+      </div>
+      <div class="instructions-display" id="instructionsDisplay"></div>
+    </aside>
+
+    <!-- Resize Handle -->
+    <div class="resize-handle" id="resizeHandle"></div>
+
+    <!-- ═══ PREPRESS CHECKLIST ═══ -->
+    <div class="checklist-panel dept-checklist dept-prepress active" id="prepressChecklist">
+
+      <!-- ── Piece Specs (3-col grid) ── -->
+      <div class="section-group">
+        <div class="section-title" onclick="toggleCollapse(this)">
+          <span class="collapse-arrow">&#9662;</span>
+          Piece Specs
+          <span class="required-legend">= Required</span>
+        </div>
+        <div class="field-grid">
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="sp1"><span class="toggle-track"></span></label>
+            <span class="field-label">Previous Job#</span>
+            <div class="field-input"><input type="text" class="notes" data-id="sp1n" placeholder="123456"></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ps3"><span class="toggle-track"></span></label>
+            <span class="field-label">Flat Size</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps3n" placeholder='8.5" x 11"'><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["3.5\u2033 x 5\u2033","4\u2033 x 6\u2033","4.25\u2033 x 6\u2033","5\u2033 x 7\u2033","6\u2033 x 9\u2033","6\u2033 x 11\u2033","8.5\u2033 x 5.5\u2033","8.5\u2033 x 11\u2033","8.5\u2033 x 14\u2033","11\u2033 x 17\u2033","8.5\u2033 x 3.5\u2033","1\u2033 x 2.625\u2033","2\u2033 x 4\u2033","4\u2033 x 6\u2033","3.33\u2033 x 4\u2033","2\u2033 x 2\u2033","N/A"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ps4"><span class="toggle-track"></span></label>
+            <span class="field-label">Finished Size</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ps4n" placeholder='8.5" x 3.5"'></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="sp2"><span class="toggle-track"></span></label>
+            <span class="field-label">Presswork</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="sp2n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Color, Simplex \u2013 4/0", "Color, Duplex \u2013 4/4", "B&amp;W, Simplex \u2013 1/0", "B&amp;W, Duplex \u2013 1/1", "Color/B&amp;W, Duplex \u2013 4/1", "B&amp;W/Color, Duplex \u2013 1/4", "N/A"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="sp3"><span class="toggle-track"></span></label>
+            <span class="field-label">Press</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="sp3n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Kirk-Rudy", "Canon", "Titan", "MCS"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ps1"><span class="toggle-track"></span></label>
+            <span class="field-label">Press sheet</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps1n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["8.5\u2033 x 11\u2033", "8.5\u2033 x 14\u2033", "11\u2033 x 17\u2033", "12\u2033 x 18\u2033", "13\u2033 x 19\u2033", "N/A"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ps14"><span class="toggle-track"></span></label>
+            <span class="field-label">Print marks</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps14n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Bleeds only", "Crop and Bleeds", "Crops Only"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ps13"><span class="toggle-track"></span></label>
+            <span class="field-label">Number Up</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps13n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["1-Up", "2-Up", "3-Up", "4-Up", "6-Up", "8-Up", "N/A"]'></div></div><div class="field-hint-max" id="ps13MaxHint"></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="sp7"><span class="toggle-track"></span></label>
+            <span class="field-label">Indicia</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="sp7n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["First Class", "Presorted First Class", "Presorted Standard", "Nonprofit"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ps10"><span class="toggle-track"></span></label>
+            <span class="field-label">Head info</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps10n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Head to Foot", "Head to Head"]'></div></div></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="sp6"><span class="toggle-track"></span></label>
+            <span class="field-label">Binding info</span>
+            <div class="field-input"><input type="text" class="notes" data-id="sp6n" placeholder="Saddle stitch"></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="sp4"><span class="toggle-track"></span></label>
+            <span class="field-label">Special color</span>
+            <div class="field-input"><input type="text" class="notes" data-id="sp4n" placeholder="PMS"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── File Path + Variable Print — side by side ── -->
+      <div class="two-col-label">File &amp; Variable Data</div>
+      <div class="two-col-sections">
+
+        <!-- ── File Path (single-col) ── -->
+        <div class="section-group">
+          <div class="section-title" onclick="toggleCollapse(this)">
+            <span class="collapse-arrow">&#9662;</span>
+            File Path
+          </div>
+          <div class="field-grid single-col">
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp1"><span class="toggle-track"></span></label>
+              <span class="field-label">Artwork path</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp1n" rows="1" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp3"><span class="toggle-track"></span></label>
+              <span class="field-label">Mockup path</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp3n" rows="1" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp2"><span class="toggle-track"></span></label>
+              <span class="field-label">SOF path</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp2n" rows="1" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp7"><span class="toggle-track"></span></label>
+              <span class="field-label">Seeds &amp; Samp</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp7n" rows="1" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp5"><span class="toggle-track"></span></label>
+              <span class="field-label">Lives path</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp5n" rows="1" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp6"><span class="toggle-track"></span></label>
+              <span class="field-label">Record Counts</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp6n" rows="1" placeholder="Path to Print Instructions" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="fp4"><span class="toggle-track"></span></label>
+              <span class="field-label">Other path</span>
+              <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="fp4n" rows="1" oninput="autoResizeTextarea(this)"></textarea></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Variable Print (single-col) ── -->
+        <div class="section-group">
+          <div class="section-title" onclick="toggleCollapse(this)">
+            <span class="collapse-arrow">&#9662;</span>
+            Variable Print
+          </div>
+          <div class="field-grid single-col">
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="ps11"><span class="toggle-track"></span></label>
+              <span class="field-label">Address Blk</span>
+              <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps11n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["OEL + Codeline + Lines 1-10", "OEL + Lines 1-10", "Codeline + Lines 1-10", "Lines 1-10", "EDDM Res &amp; Bus", "EDDM Res Only", "EDDM PO Box Only"]'></div></div></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="vp1"><span class="toggle-track"></span></label>
+              <span class="field-label">2D (camera)</span>
+              <div class="field-input"><input type="text" class="notes" data-id="vp1n"></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="ps12"><span class="toggle-track"></span></label>
+              <span class="field-label">2D (inserter)</span>
+              <div class="field-input"><input type="text" class="notes" data-id="ps12n"></div>
+            </div>
+            <div class="field-row">
+              <label class="toggle-switch"><input type="checkbox" data-id="vp3"><span class="toggle-track"></span></label>
+              <span class="field-label">Match job</span>
+              <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="vp3n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["2-way", "3-way"]'></div></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /two-col-sections -->
+
+    </div><!-- /prepress checklist -->
+
+    <!-- ═══ TECH SERVICES CHECKLIST — Spec: documentation/TS_SECTIONS_SPEC.md ═══ -->
+    <div class="checklist-panel dept-checklist dept-techservices" id="techservicesChecklist">
+
+      <!-- ── SECTION 1 — Data Conversion ── -->
+      <div class="section-group">
+        <div class="section-title" onclick="toggleCollapse(this)">
+          <span class="collapse-arrow">&#9662;</span>
+          Data Conversion
+          <span class="required-legend">= Required</span>
+        </div>
+        <div class="field-grid single-col">
+          <div class="field-row field-required">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_fp10"><span class="toggle-track"></span></label>
+            <span class="field-label">Data file locations</span>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_fp10n" rows="1" placeholder="including seed files, suppression files, and input record counts" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+
+          <div class="field-subgroup-header">Mailstreams</div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp21"><span class="toggle-track"></span></label>
+            <span class="field-label">Number of mailstreams</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ts_sp21n"></div>
+          </div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp22"><span class="toggle-track"></span></label>
+            <span class="field-label">Splitting criteria</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ts_sp22n"></div>
+          </div>
+
+          <div class="field-subgroup-header">Address fields</div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp23"><span class="toggle-track"></span></label>
+            <span class="field-label">Addressing fields used</span>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp23n" rows="1" placeholder="specify which fields" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp24"><span class="toggle-track"></span></label>
+            <span class="field-label">Multiple address fields</span>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp24n" rows="1" placeholder="note if multiple exist" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION 2 — NCOA / CASS Processing ── -->
+      <div class="section-group">
+        <div class="section-title" onclick="toggleCollapse(this)">
+          <span class="collapse-arrow">&#9662;</span>
+          NCOA / CASS Processing
+        </div>
+        <div class="field-grid single-col">
+          <div class="section-help-link-row">
+            <a class="section-help-link" href="file:///G:/CMI/PostalNewsAnd%20Reference/CASS_error_code_list.xlsx" target="_blank" rel="noopener">
+              G:\CMI\PostalNewsAnd Reference\CASS_error_code_list.xlsx
+            </a>
+          </div>
+
+          <div class="field-row field-row--cb-only">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb30"><span class="toggle-track"></span></label>
+            <span class="field-label">CASS</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb30a"><span class="toggle-track"></span></label>
+            <span class="field-label">Drop vacants?</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb30b"><span class="toggle-track"></span></label>
+            <span class="field-label">Drop phantom carrier routes? <span class="field-hint">R777, R778</span></span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb30c"><span class="toggle-track"></span></label>
+            <span class="field-label">Drop CASS errors over 90?</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-help-text field-indent-1">Typically missing secondary address; likely undeliverable.</div>
+
+          <div class="field-row field-row--cb-only">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31"><span class="toggle-track"></span></label>
+            <span class="field-label">NCOA</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31a"><span class="toggle-track"></span></label>
+            <span class="field-label">Client review required</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31b_nna"><span class="toggle-track"></span></label>
+            <span class="field-label">Movers w/ No New Address</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31b_orig"><span class="toggle-track"></span></label>
+            <span class="field-label">Mail To Original Address</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31b_mail"><span class="toggle-track"></span></label>
+            <span class="field-label">Mail to movers? <span class="field-hint">Out_MoveFootnote: 0, 91, 92, A</span></span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31b_drop"><span class="toggle-track"></span></label>
+            <span class="field-label">Drop movers? <span class="field-hint">Out_MoveFootnote: 1, 2, 3, 5, 14, 19, 66 &mdash; undeliverable</span></span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31c"><span class="toggle-track"></span></label>
+            <span class="field-label">Deceased</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31c_drop"><span class="toggle-track"></span></label>
+            <span class="field-label">Drop deceased?</span>
+            <div class="field-input"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION 3 — Deduplication ── -->
+      <div class="section-group">
+        <div class="section-title" onclick="toggleCollapse(this)">
+          <span class="collapse-arrow">&#9662;</span>
+          Deduplication
+        </div>
+        <div class="field-grid single-col">
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp30"><span class="toggle-track"></span></label>
+            <span class="field-label">Deduplication method</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_sp30n" placeholder="select one" readonly><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Individual (Full Name + Address)","Household (Last Name + Address)","Residential (Address only)"]'></div></div></div>
+          </div>
+
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp41"><span class="toggle-track"></span></label>
+            <span class="field-label">File priorities</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ts_sp41n" placeholder="define hierarchy (e.g., VIP > General)"></div>
+          </div>
+
+          <div class="field-subgroup-header">Suppression file</div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp40"><span class="toggle-track"></span></label>
+            <span class="field-label">Suppression file match</span>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp40n" rows="1" placeholder="match by address or ID?" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+
+          <div class="field-subgroup-header">Rollups / Relationships</div>
+          <div class="field-row field-row--cb-only field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp42"><span class="toggle-track"></span></label>
+            <span class="field-label">Rollup/Table</span>
+            <div class="field-input"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── SECTION 4 — Presort / Data Processing (placeholder note — no fields until Jason's spec lands) ── -->
+      <div class="section-group collapsed placeholder-section">
+        <div class="section-title" style="cursor:default;">
+          Presort &mdash; Data Processing
+          <span class="placeholder-badge" title="Pending Jason review">See Midnight For Specs</span>
+        </div>
+      </div>
+
+      <!-- ── SECTION 5 — Print ── -->
+      <div class="section-group">
+        <div class="section-title" onclick="toggleCollapse(this)">
+          <span class="collapse-arrow">&#9662;</span>
+          Print
+        </div>
+        <div class="field-grid single-col">
+          <div class="field-row field-row--meeting-required">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb90"><span class="toggle-track"></span></label>
+            <span class="field-label"><span class="meeting-icon">&#9888;</span> Meeting required</span>
+            <div class="field-input">
+              <div class="meeting-attendees">
+                <button type="button" class="meeting-attendees-btn" onclick="toggleMeetingAttendees(this)">
+                  <span class="meeting-attendees-btn-text">Select attendees</span>
+                  <span class="meeting-attendees-btn-arrow">&#9662;</span>
+                </button>
+                <div class="meeting-attendees-panel" hidden>
+                  <input type="text" class="meeting-attendees-search" placeholder="Search..." oninput="filterMeetingAttendees(this)">
+                  <div class="meeting-attendees-list"></div>
+                  <div class="meeting-attendees-actions">
+                    <button type="button" class="meeting-attendees-clear" onclick="clearMeetingAttendees(this)">Clear</button>
+                    <button type="button" class="meeting-attendees-apply" onclick="applyMeetingAttendees(this)">Apply</button>
+                  </div>
+                </div>
+                <input type="hidden" class="notes" data-id="ts_cb90_attendees">
+                <div class="meeting-attendees-chips"></div>
+              </div>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp91"><span class="toggle-track"></span></label>
+            <span class="field-label">Variables beyond address?</span>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp91n" rows="1" placeholder="e.g., ask amount, gift" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp92"><span class="toggle-track"></span></label>
+            <span class="field-label">Number of letter versions</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ts_sp92n" placeholder="numeric"></div>
+          </div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp93a"><span class="toggle-track"></span></label>
+            <span class="field-label">Signoffs per letter version</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ts_sp93an"></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp95"><span class="toggle-track"></span></label>
+            <span class="field-label">Samples per letter version</span>
+            <div class="field-input"><input type="text" class="notes" data-id="ts_sp95n" placeholder="numeric"></div>
+          </div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp94"><span class="toggle-track"></span></label>
+            <span class="field-label">Samples &mdash; address info</span>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp94n" rows="1" placeholder="e.g., John Doe, 123 Main St, Anytown, NY 14303" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /techservices checklist -->
+
+  </div><!-- /main-content -->
+</div><!-- /sopContent -->
+
+<!-- ═══ HELP / USER GUIDE MODAL ═══ -->
+<div id="helpModal" class="modal">
+  <div class="modal-content help-modal-content">
+    <div class="help-modal-header">
+      <h2>User Guide</h2>
+      <div class="help-modal-actions">
+        <button class="help-modal-print" onclick="printHelpGuide()" title="Print / Save as PDF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+        <button class="help-modal-close" onclick="closeHelpModal()" title="Close">&times;</button>
+      </div>
+    </div>
+    <div class="help-body">
+
+      <section class="help-section">
+        <h3>What This App Does</h3>
+        <p>A digital work order system for prepress. Create a job, fill in specs, write CSR instructions, and print or share. Everything saves to your browser automatically.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Landing Page</h3>
+        <p>When you open the app, you see your recent work orders.</p>
+        <ul>
+          <li><strong>New Work Order (+)</strong> opens a form for job number, client, CSR, and components.</li>
+          <li><strong>Recent grid</strong> &mdash; click any card to jump in.</li>
+          <li><strong>Search bar</strong> &mdash; type a job number or client name to filter.</li>
+        </ul>
+        <p>The landing page also shows <strong>Archived</strong> jobs (restorable) and <strong>Templates</strong> (saved component presets). Filters at the top narrow by CSR, client, or date range.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Creating a Job</h3>
+        <p>Click <strong>+</strong> in the nav bar or on the landing page. Fill in:</p>
+        <ul>
+          <li><strong>Job Number</strong> (required, must be unique)</li>
+          <li><strong>Project Name</strong> (optional, e.g., "Spring Mailer")</li>
+          <li><strong>Client Name</strong> (required, dropdown or type your own)</li>
+          <li><strong>CSR Name</strong> (required, dropdown)</li>
+          <li><strong>Components</strong> &mdash; select which pieces this job includes (Letter, Envelope, etc.). If you skip this, a default "Main" component is created.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>The Job Screen</h3>
+
+        <h4>Header (billboard)</h4>
+        <p>Shows Job#, Customer, CSR, Component, and Version. Click any editable field to change it inline. The <strong>&times;</strong> button closes the job and returns to landing.</p>
+        <p><strong>Version</strong> has a picker (click the code) and a <strong>+</strong> button to auto-increment (A01, A02, A03...).</p>
+
+        <h4>Left Sidebar &mdash; CSR Instructions</h4>
+        <p>A rich text editor (bold, italic, underline, highlight, bullets, text size) for CSR notes.</p>
+        <ul>
+          <li><strong>Generate</strong> button reads your Piece Specs and inserts a formatted summary. If specs change after generating, printing will warn you it's stale.</li>
+          <li><strong>Revisions:</strong> when you close a job, current instructions are timestamped and moved to revision history. The timeline at the bottom lets you click into any past entry.</li>
+        </ul>
+        <p>The sidebar is resizable. Drag the handle between the sidebar and checklist.</p>
+
+        <h4>Right Panel &mdash; Checklist</h4>
+        <p>Three collapsible sections of spec fields:</p>
+        <ul>
+          <li><strong>Piece Specs</strong> &mdash; Flat Size, Finished Size, Presswork, Press, Press Sheet, Print Marks, Number Up, Indicia, Head Info, Binding, Special Color, Previous Job#</li>
+          <li><strong>File Path</strong> &mdash; Artwork, Mockup, SOF, Lives, Other</li>
+          <li><strong>Variable Print</strong> &mdash; Address Block, 2D (camera), 2D (inserter), Match Job</li>
+        </ul>
+        <p>Each row has a <strong>toggle</strong> (on/off) and a <strong>text field</strong>. Turning a toggle off clears its text (except file paths). Many fields have <strong>dropdown presets</strong> &mdash; click the arrow or type your own.</p>
+        <p><strong>Required fields</strong> (Flat Size, Presswork, Press Sheet, Number Up, Press) show a red dot when empty. Envelopes skip Press Sheet and Number Up.</p>
+        <p><strong>Smart dropdowns:</strong> Flat Size and Press options automatically switch between standard and envelope choices based on the component name.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Component Tabs</h3>
+        <p>Jobs can have up to 10 components (e.g., Letter + Envelope + Buckslip). Tabs appear above the checklist.</p>
+        <ul>
+          <li>Click a tab to switch.</li>
+          <li>Double-click a tab name to rename.</li>
+          <li>Click <strong>+</strong> to add a new component (optionally from a template).</li>
+          <li>Click <strong>&times;</strong> on a tab to delete it (only when more than one).</li>
+        </ul>
+        <p>Each component has its own checklist, instructions, and version.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Nav Bar Actions</h3>
+        <table class="help-table">
+          <tr><td><strong>Home icon</strong></td><td>Back to landing (warns if required fields missing)</td></tr>
+          <tr><td><strong>+</strong></td><td>New work order</td></tr>
+          <tr><td><strong>Printer</strong></td><td>Print current component or all components</td></tr>
+          <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
+          <tr><td><strong>Undo / Redo</strong></td><td>Undo/redo changes (Ctrl+Z / Ctrl+Y)</td></tr>
+          <tr><td><strong>...</strong></td><td>Edit Job, Duplicate, Templates, Reset, Delete, Import/Export, Backup, Text Size</td></tr>
+          <tr><td><strong>?</strong></td><td>This guide</td></tr>
+          <tr><td><strong>Search</strong></td><td>Highlights matching field labels, auto-expands collapsed sections</td></tr>
+        </table>
+      </section>
+
+      <section class="help-section">
+        <h3>Printing</h3>
+        <p>Two options in the print dropdown:</p>
+        <ul>
+          <li><strong>Print Current</strong> &mdash; prints the active component.</li>
+          <li><strong>Print All Components</strong> &mdash; prints every component in sequence.</li>
+        </ul>
+        <p>Before printing, the app checks: required fields filled, specs physically valid (e.g., flat size vs. finished size), and specs summary up to date. You can override warnings.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Templates</h3>
+        <p>Save a component's checklist as a reusable template: <strong>More &gt; Save as Template</strong>. When adding a new component, select a template to pre-fill checkboxes and notes. Templates appear on the landing page.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Duplicating</h3>
+        <ul>
+          <li><strong>Duplicate Job</strong> &mdash; copies the entire job. Clears instructions, file paths, variable print, and previous job#. Opens Edit Job so you can update the number.</li>
+          <li><strong>Duplicate Component</strong> &mdash; copies the current component within the same job. Same clearing rules.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>Import / Export</h3>
+        <ul>
+          <li><strong>Export</strong> &mdash; pick which jobs to include, downloads a .json file.</li>
+          <li><strong>Import</strong> &mdash; load a .json file. Preview shows what will be imported and flags duplicates.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>Data &amp; Backup</h3>
+        <p>All data lives in your browser's localStorage. A secondary copy auto-saves to IndexedDB. If localStorage is ever cleared, the app auto-recovers from IndexedDB on next load.</p>
+        <p><strong>Restore from Backup</strong> (in the More menu) lets you manually pull from the IndexedDB backup.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Profile</h3>
+        <p>Click the profile circle (top right) to set your nickname and upload a photo. Use the zoom slider and drag to crop your photo to fit the circle. Your name appears on timestamps and triggers personalized greetings on the landing page.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Admin Password</h3>
+        <p>Destructive actions (delete job, delete template) require an admin password. This guards against accidental deletion.</p>
+      </section>
+
+      <!-- TODO: Add "Shared Editing" tutorial section when internal server goes live.
+           Covers: lock banner ("X is editing this job"), View Read-Only vs Edit Anyway,
+           heartbeat/auto-expire behavior, what happens on tab close. -->
+
+      <section class="help-section help-section-limits">
+        <h3>Limits</h3>
+        <ul>
+          <li>20 active jobs max (archive old ones to make room)</li>
+          <li>10 components per job</li>
+          <li>15 undo steps</li>
+        </ul>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN PASSWORD MODAL ═══ -->
+<div id="adminPasswordModal" class="modal">
+  <div class="modal-content" style="max-width:340px;">
+    <h3 style="margin-bottom:var(--space-md);">Admin Password</h3>
+    <div class="admin-pw-field">
+      <input type="password" id="adminPasswordInput" placeholder="Enter password..." autocomplete="off" onkeydown="if(event.key==='Enter')submitAdminPassword();if(event.key==='Escape')cancelAdminPassword();">
+      <button type="button" class="admin-pw-toggle" id="adminPwToggle" onclick="toggleAdminPwVisibility()" title="Show password">
+        <svg id="adminPwEyeOpen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg id="adminPwEyeClosed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <div class="admin-pw-error" id="adminPwError" style="display:none;">Incorrect password.</div>
+    <div style="display:flex;gap:8px;margin-top:var(--space-md);">
+      <button class="profile-save-btn" style="flex:1;" onclick="submitAdminPassword()">Confirm</button>
+      <button class="profile-save-btn" style="flex:1;background:var(--surface-sunken);color:var(--ink-soft);" onclick="cancelAdminPassword()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/prepress.js"></script>
+<script src="js/techservices.js"></script>
+<script src="js/app.js"></script>
+<script src="js/meeting-attendees.js"></script>
+<script src="js/ui-toggles.js"></script>
+
+</body>
+</html>
