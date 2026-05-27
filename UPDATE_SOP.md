@@ -4,8 +4,8 @@
 
 What changed: Styling, layout, or frontend behavior.
 
-1. Make changes at home in the `prepress/public/` folder
-2. Copy the changed file(s) to vioverse.io or cloud storage
+1. Make changes at home in `prepress-mdrive/`, then run `/prepress-deploy`
+2. IT downloads the latest zip from https://github.com/vioverse-io/prepress-server/archive/refs/heads/main.zip
 3. At work, replace the file(s) in the server's `public/` folder:
    - `public/index.html`
    - `public/css/styles.css`
@@ -48,8 +48,8 @@ What changed: A new npm package is required.
 
 What changed: Major overhaul, too many files to track individually.
 
-1. Build a new zip at home
-2. Push to `vioverse.io/prepress-app.zip`
+1. Run `/prepress-deploy` at home (pushes changes to the public repo)
+2. At work, download the latest zip: https://github.com/vioverse-io/prepress-server/archive/refs/heads/main.zip
 3. At work:
    - Back up the current `prepress.db` (this is the data)
    - Unzip the new version to a new folder

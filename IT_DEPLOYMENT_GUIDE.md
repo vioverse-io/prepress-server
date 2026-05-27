@@ -60,11 +60,12 @@ All three are widely used, open-source packages. Express alone has 30M+ weekly d
 ## Installation Steps
 
 1. Install Node.js LTS (v18 or newer) from https://nodejs.org
-2. Unzip `prepress-app.zip` to desired location
-3. Open terminal/command prompt in the `prepress` folder
-4. Run: `npm install`
-5. Run: `node server.js`
-6. Open browser to `http://localhost:3000`
+2. Download the latest app zip: https://github.com/vioverse-io/prepress-server/archive/refs/heads/main.zip
+3. Unzip to desired location (e.g. `C:\PrepressWO\`)
+4. Open terminal/command prompt in the extracted folder
+5. Run: `npm install`
+6. Run: `node server.js`
+7. Open browser to `http://localhost:3000`
 
 ## Multi-User Access
 
