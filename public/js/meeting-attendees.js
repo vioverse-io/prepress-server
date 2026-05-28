@@ -111,6 +111,15 @@
         hidden.dispatchEvent(new Event('input', { bubbles: true }));
         renderChips(widget);
         updateBtnText(widget, names);
+
+        // Auto-check the "Meeting required" toggle when attendees are selected
+        if (names.length > 0) {
+            var meetingToggle = document.querySelector('input[data-id="ts_cb90"]');
+            if (meetingToggle && !meetingToggle.checked) {
+                meetingToggle.checked = true;
+                meetingToggle.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
     }
 
     function renderChips(widget) {

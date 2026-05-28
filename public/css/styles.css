@@ -851,7 +851,10 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
   border-top: none;
   border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  /* overflow: clip instead of hidden — clips at border-radius like hidden,
+     but does NOT create a scroll container, so position: sticky on the
+     sidebar works relative to the viewport. */
+  overflow: clip;
   min-height: 600px;
 }
 
@@ -864,6 +867,17 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
   display: flex;
   flex-direction: column;
   background: var(--surface-raised);
+  /* Sticky sidebar: stays in view while the user scrolls through a tall
+     checklist (e.g. Tech Services). align-self: flex-start stops the
+     sidebar from stretching to match the checklist height. top offset =
+     nav + billboard + component-tabs + dept-tabs, synced by ResizeObserver.
+     max-height keeps the sidebar within the viewport and gives it its own
+     scroll when the editor + revisions exceed the available space. */
+  position: sticky;
+  top: calc(56px + var(--billboard-height, 115px) + var(--component-tabs-height, 51px) + var(--dept-tabs-height, 36px));
+  align-self: flex-start;
+  max-height: calc(100vh - 56px - var(--billboard-height, 115px) - var(--component-tabs-height, 51px) - var(--dept-tabs-height, 36px));
+  overflow-y: auto;
 }
 
 .sidebar-header {
@@ -1546,7 +1560,7 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 
 @media (max-width: 800px) {
   .main-content { flex-direction: column; }
-  .sidebar { width: 100% !important; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar { width: 100% !important; border-right: none; border-bottom: 1px solid var(--border); position: static; max-height: none; overflow-y: visible; }
   .resize-handle { display: none; }
   .field-grid { grid-template-columns: 1fr; }
 }
@@ -2019,7 +2033,7 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
   .print-meta span span { font-weight: 500; color: #3d3d56 !important; }
 
   .main-content { display: block; border: none; box-shadow: none; border-radius: 0; }
-  .sidebar { width: 100%; border-right: none; border-bottom: none; margin-bottom: 10px; }
+  .sidebar { width: 100%; border-right: none; border-bottom: none; margin-bottom: 10px; position: static; max-height: none; overflow-y: visible; }
   .sidebar-header, .sidebar-footer, .resize-handle { display: none !important; }
   .csr-editor { display: none !important; }
   .csr-history { display: none !important; }

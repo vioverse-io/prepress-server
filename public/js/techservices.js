@@ -23,6 +23,7 @@ window.DEPT_REGISTRY.techservices = {
 
     // Dropdown option sets.
     DEDUP_METHODS: ["Individual (Full Name + Address)", "Household (Last Name + Address)", "Residential (Address only)"],
+    CASING_OPTIONS: ["Upper/Lower, Punctuation", "Upper/Lower, No Punctuation", "All Upper, Punctuation", "All Upper, No Punctuation"],
 
     // Required fields (first pass — Jason may add more; see TBD T1)
     REQUIRED_FIELDS: [
@@ -46,12 +47,12 @@ window.DEPT_REGISTRY.techservices = {
             { cbId: 'ts_sp24', noteId: 'ts_sp24n', label: 'Multiple address fields' }
         ]},
         { title: 'NCOA / CASS', fields: [
+            { cbId: 'ts_cb31a', noteId: 'ts_cb31a_n', label: 'Client review required' },
             { cbId: 'ts_cb30', noteId: 'ts_cb30_n', label: 'CASS' },
             { cbId: 'ts_cb30a', noteId: 'ts_cb30a_n', label: 'Drop vacants' },
             { cbId: 'ts_cb30b', noteId: 'ts_cb30b_n', label: 'Drop phantom carrier routes (R777, R778)' },
             { cbId: 'ts_cb30c', noteId: 'ts_cb30c_n', label: 'Drop CASS errors over 90' },
             { cbId: 'ts_cb31', noteId: 'ts_cb31_n', label: 'NCOA' },
-            { cbId: 'ts_cb31a', noteId: 'ts_cb31a_n', label: 'Client review required' },
             { cbId: 'ts_cb31b_nna', noteId: 'ts_cb31b_nna_n', label: 'Movers w/ No New Address' },
             { cbId: 'ts_cb31b_orig', noteId: 'ts_cb31b_orig_n', label: 'Mail To Original Address' },
             { cbId: 'ts_cb31b_mail', noteId: 'ts_cb31b_mail_n', label: 'Mail to movers' },
@@ -65,7 +66,10 @@ window.DEPT_REGISTRY.techservices = {
             { cbId: 'ts_sp30', noteId: 'ts_sp30n', label: 'Deduplication method' },
             { cbId: 'ts_sp41', noteId: 'ts_sp41n', label: 'File priorities' },
             { cbId: 'ts_sp40', noteId: 'ts_sp40n', label: 'Suppression file match' },
-            { cbId: 'ts_sp42', noteId: 'ts_sp42n', label: 'Rollup/Table' }
+            { cbId: 'ts_sp42', noteId: 'ts_sp42n', label: 'Rollup/Table' },
+            { cbId: 'ts_cb50a', noteId: 'ts_cb50a_n', label: 'Matching - #-Way' },
+            { cbId: 'ts_cb50b', noteId: 'ts_cb50b_n', label: 'Match/Append' },
+            { cbId: 'ts_sp51', noteId: 'ts_sp51n', label: 'Casing' }
         ]},
         { title: 'Print', fields: [
             { cbId: 'ts_cb90', noteId: 'ts_cb90_attendees', label: '\u26A0 Meeting required' },
@@ -194,6 +198,15 @@ window.DEPT_REGISTRY.techservices = {
         if (suppressionMatch)         parts.push('Suppress against client-supplied DNM list, matched by ' + suppressionMatch + '.');
         else if (chk('ts_sp40'))      parts.push('Suppress against client-supplied DNM list.');
 
+        // ─── Other (Matching / Casing) ──────────────────
+        const otherClauses = [];
+        if (chk('ts_cb50a')) otherClauses.push('matching (#-way)');
+        if (chk('ts_cb50b')) otherClauses.push('match/append');
+        const casingVal = val('ts_sp51', 'ts_sp51n');
+        if (casingVal) otherClauses.push('casing: ' + casingVal);
+        else if (chk('ts_sp51')) otherClauses.push('casing');
+        if (otherClauses.length) parts.push('Other processing: ' + otherClauses.join(', ') + '.');
+
         // ─── Print ──────────────────────────────────────
         const variableFields = val('ts_sp91', 'ts_sp91n');
         if (variableFields) parts.push('Variable fields beyond address: ' + variableFields + '.');
@@ -243,6 +256,7 @@ window.DEPT_REGISTRY.techservices = {
         };
 
         setOptions('ts_sp30n', this.DEDUP_METHODS);
+        setOptions('ts_sp51n', this.CASING_OPTIONS);
     },
 
     // No-op: TS has no flat-size field. Kept for registry-shape parity with Prepress.

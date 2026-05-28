@@ -146,73 +146,7 @@
     // Restore on load
     if (localStorage.getItem('prepressTextLg') === '1') document.body.classList.add('text-lg');
 
-    // ========== INDEXEDDB BACKUP ==========
-    const IDB_NAME = 'prepressBackup';
-    const IDB_STORE = 'data';
-    const IDB_VERSION = 1;
-
-    function openIDB() {
-        return new Promise((resolve, reject) => {
-            try {
-                const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-                req.onupgradeneeded = () => {
-                    const db = req.result;
-                    if (!db.objectStoreNames.contains(IDB_STORE)) {
-                        db.createObjectStore(IDB_STORE);
-                    }
-                };
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error);
-            } catch (e) { reject(e); }
-        });
-    }
-
-    async function backupToIDB(jobs, archive) {
-        try {
-            const db = await openIDB();
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            const store = tx.objectStore(IDB_STORE);
-            store.put(jobs, 'jobs');
-            store.put(archive, 'archive');
-            store.put(new Date().toISOString(), 'lastAutoBackup');
-            tx.oncomplete = () => db.close();
-        } catch (e) { /* IDB unavailable, localStorage still works */ }
-    }
-
-    async function restoreFromIDB() {
-        try {
-            const db = await openIDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction(IDB_STORE, 'readonly');
-                const store = tx.objectStore(IDB_STORE);
-                const jobsReq = store.get('jobs');
-                const archiveReq = store.get('archive');
-                const tsReq = store.get('lastAutoBackup');
-                tx.oncomplete = () => {
-                    db.close();
-                    resolve({
-                        jobs: jobsReq.result || [],
-                        archive: archiveReq.result || [],
-                        timestamp: tsReq.result || null
-                    });
-                };
-                tx.onerror = () => { db.close(); resolve(null); };
-            });
-        } catch (e) { return null; }
-    }
-
-    async function getBackupTimestamp() {
-        try {
-            const db = await openIDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction(IDB_STORE, 'readonly');
-                const store = tx.objectStore(IDB_STORE);
-                const req = store.get('lastAutoBackup');
-                tx.oncomplete = () => { db.close(); resolve(req.result || null); };
-                tx.onerror = () => { db.close(); resolve(null); };
-            });
-        } catch (e) { return null; }
-    }
+    // ========== SERVER BACKUP (no IndexedDB needed) ==========
 
     function showToast(msg) {
         const el = document.getElementById('backupToast');
@@ -222,25 +156,7 @@
     }
 
     async function restoreFromBackupUI() {
-        const backup = await restoreFromIDB();
-        if (!backup || (!backup.jobs.length && !backup.archive.length)) {
-            alert('No backup found in IndexedDB.');
-            return;
-        }
-        const ts = backup.timestamp
-            ? new Date(backup.timestamp).toLocaleString()
-            : 'Unknown';
-        const msg = `Restore from backup?\n\nLast backup: ${ts}\nActive jobs: ${backup.jobs.length}\nArchived jobs: ${backup.archive.length}\n\nThis will replace your current data.`;
-        if (!confirm(msg)) return;
-
-        localStorage.setItem('prepressJobs', JSON.stringify(backup.jobs));
-        localStorage.setItem('prepressJobsArchive', JSON.stringify(backup.archive));
-        invalidateJobsCache();
-        currentJobId = null;
-        currentComponentId = null;
-        loadJobs();
-        showNoJobState();
-        showToast('Data restored from backup');
+        alert('Data is stored on the server. No local backup to restore.');
     }
 
     function autoResizeTextarea(el) {
@@ -752,6 +668,7 @@
         };
         observe(document.getElementById('printHeader'), '--billboard-height');
         observe(document.querySelector('.component-tabs-wrapper'), '--component-tabs-height');
+        observe(document.querySelector('.dept-tabs'), '--dept-tabs-height');
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -760,21 +677,9 @@
         updateLandingGreeting();
         initCropHandlers();
 
-        // Auto-recovery: if localStorage is empty, try restoring from IndexedDB
-        const lsJobs = localStorage.getItem('prepressJobs');
-        if (!lsJobs || lsJobs === '[]') {
-            try {
-                const backup = await restoreFromIDB();
-                if (backup && backup.jobs && backup.jobs.length > 0) {
-                    localStorage.setItem('prepressJobs', JSON.stringify(backup.jobs));
-                    invalidateJobsCache();
-                    if (backup.archive && backup.archive.length > 0) {
-                        localStorage.setItem('prepressJobsArchive', JSON.stringify(backup.archive));
-                    }
-                    showToast('Job data recovered from backup');
-                }
-            } catch (e) { /* IDB unavailable, proceed with empty state */ }
-        }
+        // Load jobs from server
+        await refreshJobs();
+
         loadJobs(); setupListeners(); updateUndoRedoButtons(); setupAutoActivateToggles(); populateCSRDropdowns();
         initBillboardHeightSync();
         // Suppress browser autocomplete on all quick-pick inputs
@@ -1107,27 +1012,93 @@
         });
     })();
 
+    // ── Server-backed data layer ──
+    // jobsCache holds active jobs in memory; refreshed from server on key actions.
+    // rowVersions tracks the optimistic lock version per job id.
+    let rowVersions = {};
+
     function getActiveJobs() {
-        if (jobsCache) return jobsCache;
-        try {
-            const j = localStorage.getItem('prepressJobs');
-            jobsCache = j ? JSON.parse(j) : [];
-        } catch (e) {
-            console.error('Failed to parse prepressJobs from localStorage:', e);
-            jobsCache = [];
-        }
-        return jobsCache;
+        return jobsCache || [];
     }
 
+    let _persistJobTimer = null;
     function saveActiveJobs(jobs) {
         jobsCache = jobs;
-        localStorage.setItem('prepressJobs', JSON.stringify(jobs));
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
-        backupToIDB(jobs, archive);
+        // Debounced persist: save current job to server 600ms after last call
+        if (currentJobId) {
+            clearTimeout(_persistJobTimer);
+            _persistJobTimer = setTimeout(() => {
+                const j = (jobsCache || []).find(x => x.id === currentJobId);
+                if (j) persistJob(j);
+            }, 600);
+        }
     }
 
     function invalidateJobsCache() {
         jobsCache = null;
+    }
+
+    async function refreshJobs() {
+        try {
+            const res = await fetch('/api/jobs');
+            if (!res.ok) throw new Error('Failed to load jobs');
+            const jobs = await res.json();
+            jobs.forEach(j => { rowVersions[j.id] = j.rowVersion; });
+            jobsCache = jobs;
+        } catch (e) {
+            console.error('refreshJobs failed:', e);
+            if (!jobsCache) jobsCache = [];
+        }
+        return jobsCache;
+    }
+
+    async function persistJob(job) {
+        const now = new Date().toISOString();
+        job.lastModified = now;
+        job.lastModifiedBy = getUserName();
+        const payload = { ...job, rowVersion: rowVersions[job.id] || 1 };
+        delete payload.components; // components are saved separately
+        const res = await fetch('/api/jobs/' + job.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.status === 409) {
+            alert('This job was updated by someone else. Reloading to see their changes.');
+            await refreshJobs();
+            if (currentJobId) loadJob(currentJobId);
+            return false;
+        }
+        if (!res.ok) throw new Error('Failed to save job');
+        const data = await res.json();
+        rowVersions[job.id] = data.rowVersion;
+        return true;
+    }
+
+    async function persistComponent(comp, job) {
+        const payload = {
+            ...comp,
+            checkboxes: comp.checkboxes || {},
+            notes: comp.notes || {},
+            rowVersion: rowVersions[job.id] || 1,
+            lastModified: new Date().toISOString(),
+            lastModifiedBy: getUserName()
+        };
+        const res = await fetch('/api/components/' + comp.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.status === 409) {
+            alert('This job was updated by someone else. Reloading to see their changes.');
+            await refreshJobs();
+            if (currentJobId) loadJob(currentJobId);
+            return false;
+        }
+        if (!res.ok) throw new Error('Failed to save component');
+        const data = await res.json();
+        rowVersions[job.id] = data.rowVersion;
+        return true;
     }
 
     function openNewJobModal() {
@@ -1169,7 +1140,7 @@
         });
     }
 
-    function createNewJob() {
+    async function createNewJob() {
         const jobs = getActiveJobs();
         const num = document.getElementById('jobNumber').value.trim();
         if (!num) { alert('Job number is required.'); return; }
@@ -1226,6 +1197,21 @@
             components: components,
             activeComponentId: components[0].id
         };
+
+        try {
+            const res = await fetch('/api/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newJob)
+            });
+            if (!res.ok) throw new Error('Failed to create job');
+            const data = await res.json();
+            rowVersions[newJob.id] = data.rowVersion;
+            newJob.rowVersion = data.rowVersion;
+        } catch (e) {
+            alert('Error creating job: ' + e.message);
+            return;
+        }
 
         jobs.push(newJob);
         saveActiveJobs(jobs);
@@ -1284,23 +1270,27 @@
         if (!(await verifyAdminPassword())) return;
         if (!confirm('Permanently delete this job?')) return;
 
+        try {
+            const res = await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete job');
+        } catch (e) {
+            alert('Error deleting job: ' + e.message);
+            return;
+        }
+
         let jobs = getActiveJobs();
         const idx = jobs.findIndex(j => j.id === jobId);
-        if (idx > -1) {
-            jobs.splice(idx, 1);
-            saveActiveJobs(jobs);
+        if (idx > -1) jobs.splice(idx, 1);
+        saveActiveJobs(jobs);
+        delete rowVersions[jobId];
 
-            if (currentJobId === jobId) {
-                currentJobId = null;
-                showNoJobState();
-            }
-
-            loadJobs();
-
-            if (jobs.length === 0) {
-                closeJobDropdown();
-            }
+        if (currentJobId === jobId) {
+            currentJobId = null;
+            showNoJobState();
         }
+
+        loadJobs();
+        if (jobs.length === 0) closeJobDropdown();
     }
 
     async function deleteSelectedJobs() {
@@ -1314,9 +1304,16 @@
         if (!confirm(`Delete ${checkboxes.length} selected job(s)?`)) return;
 
         const idsToDelete = Array.from(checkboxes).map(cb => cb.getAttribute('data-job-id'));
-        let jobs = getActiveJobs();
 
-        // Check if currently loaded job is being deleted
+        // Delete from server
+        for (const id of idsToDelete) {
+            try {
+                await fetch('/api/jobs/' + id, { method: 'DELETE' });
+                delete rowVersions[id];
+            } catch (e) { /* continue with others */ }
+        }
+
+        let jobs = getActiveJobs();
         if (currentJobId && idsToDelete.includes(currentJobId)) {
             currentJobId = null;
             showNoJobState();
@@ -1326,9 +1323,7 @@
         saveActiveJobs(jobs);
         loadJobs();
 
-        if (jobs.length === 0) {
-            closeJobDropdown();
-        }
+        if (jobs.length === 0) closeJobDropdown();
     }
 
     function closeCurrentJob() {
@@ -1381,6 +1376,9 @@
                 // Clear current instructions for this dept
                 comp[instrKey] = '';
             });
+
+            // Persist each component's history update to server
+            persistComponent(comp, job);
         });
 
         // Update UI if we're still viewing this job
@@ -1503,6 +1501,9 @@
         let jobs = getActiveJobs();
         let job = jobs.find(j => j.id === jobId);
         if (!job) return;
+
+        // Track rowVersion for optimistic locking
+        if (job.rowVersion) rowVersions[job.id] = job.rowVersion;
 
         // Migrate old job format to components if needed
         if (!job.components) {
@@ -1830,27 +1831,30 @@
             job.lastModified = new Date().toISOString();
             job.lastModifiedBy = getUserName();
             saveActiveJobs(jobs);
+            persistComponent(comp, job);
             loadComponentData();
         }
     }
 
-    function archiveJob() {
+    async function archiveJob() {
         if (!currentJobId || !confirm('Archive this job?')) return;
         closeCurrentJob(); // Add timestamp before archiving
-        const active = getActiveJobs();
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
-        const idx = active.findIndex(j => j.id === currentJobId);
-        if (idx > -1) {
-            const job = active.splice(idx, 1)[0];
-            job.archivedDate = new Date().toISOString();
-            archive.push(job);
-            saveActiveJobs(active);
-            localStorage.setItem('prepressJobsArchive', JSON.stringify(archive));
-            backupToIDB(active, archive);
-            currentJobId = null;
-            loadJobs();
-            showNoJobState();
+
+        try {
+            const res = await fetch('/api/jobs/' + currentJobId + '/archive', { method: 'POST' });
+            if (!res.ok) throw new Error('Failed to archive job');
+        } catch (e) {
+            alert('Error archiving job: ' + e.message);
+            return;
         }
+
+        const active = getActiveJobs();
+        const idx = active.findIndex(j => j.id === currentJobId);
+        if (idx > -1) active.splice(idx, 1);
+        saveActiveJobs(active);
+        currentJobId = null;
+        loadJobs();
+        showNoJobState();
     }
 
     // ========== ARCHIVE BROWSER ==========
@@ -1862,10 +1866,14 @@
         renderArchivedJobs();
     }
 
-    function renderArchivedJobs() {
+    async function renderArchivedJobs() {
         const container = document.getElementById('archivedJobs');
         if (!container) return;
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
+        let archive = [];
+        try {
+            const res = await fetch('/api/archive');
+            if (res.ok) archive = await res.json();
+        } catch (e) { /* show empty */ }
         if (archive.length === 0) {
             container.innerHTML = '';
             return;
@@ -1901,22 +1909,20 @@
             footer;
     }
 
-    function unarchiveJob(jobId) {
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
-        const idx = archive.findIndex(j => j.id === jobId);
-        if (idx === -1) return;
+    async function unarchiveJob(jobId) {
         const active = getActiveJobs();
         if (active.length >= MAX_ACTIVE_JOBS) {
             alert('Max ' + MAX_ACTIVE_JOBS + ' active jobs. Archive or delete one first.');
             return;
         }
-        const job = archive.splice(idx, 1)[0];
-        delete job.archivedDate;
-        active.push(job);
-        // Update archive first so saveActiveJobs' internal backup sees the correct archive
-        localStorage.setItem('prepressJobsArchive', JSON.stringify(archive));
-        jobsCache = null;
-        saveActiveJobs(active);
+        try {
+            const res = await fetch('/api/jobs/' + jobId + '/unarchive', { method: 'POST' });
+            if (!res.ok) throw new Error('Failed to unarchive');
+        } catch (e) {
+            alert('Error restoring job: ' + e.message);
+            return;
+        }
+        await refreshJobs();
         loadJobs();
         showNoJobState();
     }
@@ -1924,13 +1930,12 @@
     async function deleteArchivedJob(jobId) {
         if (!(await verifyAdminPassword())) return;
         if (!confirm('Permanently delete this archived job?')) return;
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
-        const idx = archive.findIndex(j => j.id === jobId);
-        if (idx === -1) return;
-        archive.splice(idx, 1);
-        localStorage.setItem('prepressJobsArchive', JSON.stringify(archive));
-        const active = getActiveJobs();
-        backupToIDB(active, archive);
+        try {
+            await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
+        } catch (e) {
+            alert('Error deleting archived job: ' + e.message);
+            return;
+        }
         renderArchivedJobs();
     }
 
@@ -2115,15 +2120,23 @@
         if (!currentJobId) return;
         if (!(await verifyAdminPassword())) return;
         if (!confirm('Permanently delete this job?')) return;
+
+        try {
+            const res = await fetch('/api/jobs/' + currentJobId, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete job');
+        } catch (e) {
+            alert('Error deleting job: ' + e.message);
+            return;
+        }
+
         const jobs = getActiveJobs();
         const idx = jobs.findIndex(j => j.id === currentJobId);
-        if (idx > -1) {
-            jobs.splice(idx, 1);
-            saveActiveJobs(jobs);
-            currentJobId = null;
-            loadJobs();
-            showNoJobState();
-        }
+        if (idx > -1) jobs.splice(idx, 1);
+        saveActiveJobs(jobs);
+        delete rowVersions[currentJobId];
+        currentJobId = null;
+        loadJobs();
+        showNoJobState();
     }
 
     function showNoJobState() {
@@ -2708,9 +2721,14 @@ ${sectionsHTML}
 
     // ========== SELECTIVE EXPORT ==========
 
-    function exportJobs() {
+    let _exportArchiveCache = [];
+    async function exportJobs() {
         const active = getActiveJobs();
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
+        try {
+            const res = await fetch('/api/archive');
+            if (res.ok) _exportArchiveCache = await res.json();
+        } catch (e) { _exportArchiveCache = []; }
+        const archive = _exportArchiveCache;
         const list = document.getElementById('exportJobList');
         let html = '';
 
@@ -2757,7 +2775,7 @@ ${sectionsHTML}
 
     function doExport() {
         const active = getActiveJobs();
-        const archive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
+        const archive = _exportArchiveCache || [];
         const checked = document.querySelectorAll('#exportJobList input[type="checkbox"]:checked');
         const selectedActive = [];
         const selectedArchive = [];
@@ -2815,9 +2833,13 @@ ${sectionsHTML}
         reader.readAsText(file);
     }
 
-    function showImportSummary(data) {
+    async function showImportSummary(data) {
         const existingJobs = getActiveJobs();
-        const existingArchive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
+        let existingArchive = [];
+        try {
+            const archRes = await fetch('/api/archive');
+            if (archRes.ok) existingArchive = await archRes.json();
+        } catch (e) { /* proceed with empty */ }
         const importedJobs = data.prepressJobs || [];
         const importedArchive = data.prepressJobsArchive || [];
 
@@ -2892,45 +2914,44 @@ ${sectionsHTML}
         pendingImportData = null;
     }
 
-    function confirmImport() {
+    async function confirmImport() {
         if (!pendingImportData) return;
         // Build set of checked older/newer items
         const checkedIdxs = new Set();
         document.querySelectorAll('#importJobList .import-check:checked').forEach(cb => {
             checkedIdxs.add(parseInt(cb.dataset.idx));
         });
-        const existingJobs = getActiveJobs();
-        const existingArchive = JSON.parse(localStorage.getItem('prepressJobsArchive') || '[]');
         let addedCount = 0;
         let updatedCount = 0;
 
-        pendingImportData.forEach((c, idx) => {
-            if (c.status === 'skip') return;
-            // For newer/older items, only import if checkbox is checked
-            if ((c.status === 'newer' || c.status === 'older') && !checkedIdxs.has(idx)) return;
-            if (c.target === 'active') {
-                if (c.status === 'new') {
-                    existingJobs.push(c.job);
-                    addedCount++;
-                } else {
-                    const jdx = existingJobs.findIndex(j => j.id === c.existingId);
-                    if (jdx > -1) { existingJobs[jdx] = c.job; updatedCount++; }
-                }
-            } else {
-                if (c.status === 'new') {
-                    existingArchive.push(c.job);
-                    addedCount++;
-                } else {
-                    const jdx = existingArchive.findIndex(j => j.id === c.existingId);
-                    if (jdx > -1) { existingArchive[jdx] = c.job; updatedCount++; }
-                }
-            }
-        });
+        for (const c of pendingImportData) {
+            const idx = pendingImportData.indexOf(c);
+            if (c.status === 'skip') continue;
+            if ((c.status === 'newer' || c.status === 'older') && !checkedIdxs.has(idx)) continue;
 
-        saveActiveJobs(existingJobs);
-        localStorage.setItem('prepressJobsArchive', JSON.stringify(existingArchive));
-        backupToIDB(existingJobs, existingArchive);
-        invalidateJobsCache();
+            try {
+                if (c.status === 'new') {
+                    await fetch('/api/jobs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(c.job)
+                    });
+                    addedCount++;
+                } else {
+                    // Update existing - delete and re-create to handle component changes
+                    await fetch('/api/jobs/' + c.existingId, { method: 'DELETE' });
+                    c.job.id = c.existingId;
+                    await fetch('/api/jobs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(c.job)
+                    });
+                    updatedCount++;
+                }
+            } catch (e) { /* continue with others */ }
+        }
+
+        await refreshJobs();
         loadJobs();
         closeImportModal();
         alert('Imported: ' + addedCount + ' added, ' + updatedCount + ' updated.');
@@ -4088,6 +4109,9 @@ ${sectionsHTML}
         job.lastModified = new Date().toISOString();
         job.lastModifiedBy = getUserName();
         saveActiveJobs(jobs);
+
+        // Persist to server (fire-and-forget for responsiveness)
+        persistComponent(comp, job);
         return { job, comp };
     }
 
@@ -4165,7 +4189,7 @@ ${sectionsHTML}
     }
 
     // Add a new component
-    function addComponent(name, templateId) {
+    async function addComponent(name, templateId) {
         if (!currentJobId) return;
 
         const jobs = getActiveJobs();
@@ -4207,6 +4231,27 @@ ${sectionsHTML}
         // Apply template if selected
         if (templateId) applyTemplateToComponent(templateId, job, newComp);
 
+        // Create on server
+        try {
+            const res = await fetch('/api/jobs/' + job.id + '/components', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...newComp, rowVersion: rowVersions[job.id], lastModifiedBy: getUserName() })
+            });
+            if (res.status === 409) {
+                alert('This job was updated by someone else. Reloading.');
+                await refreshJobs();
+                if (currentJobId) loadJob(currentJobId);
+                return;
+            }
+            if (!res.ok) throw new Error('Failed to create component');
+            const data = await res.json();
+            rowVersions[job.id] = data.rowVersion;
+        } catch (e) {
+            alert('Error adding component: ' + e.message);
+            return;
+        }
+
         job.components.push(newComp);
         job.activeComponentId = newComp.id;
         job.lastModified = new Date().toISOString();
@@ -4230,6 +4275,17 @@ ${sectionsHTML}
         if (!comp) return;
 
         if (!confirm(`Delete component "${comp.name}"? This cannot be undone.`)) return;
+
+        // Delete from server
+        try {
+            const res = await fetch('/api/components/' + componentId, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete component');
+            const data = await res.json();
+            if (data.rowVersion) rowVersions[job.id] = data.rowVersion;
+        } catch (e) {
+            alert('Error deleting component: ' + e.message);
+            return;
+        }
 
         // Audit trail
         if (!job.deletionLog) job.deletionLog = [];
@@ -4776,7 +4832,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
     // Fields to CLEAR on duplicate (file paths + variable print + previous job#)
     const DUPLICATE_CLEAR_IDS = ['sp1', 'fp1', 'fp2', 'fp3', 'fp4', 'fp6', 'ps11', 'vp1', 'ps12', 'vp3'];
 
-    function duplicateJob() {
+    async function duplicateJob() {
         if (!currentJobId) return;
         const jobs = getActiveJobs();
         const original = jobs.find(j => j.id === currentJobId);
@@ -4826,6 +4882,21 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
 
         newJob.activeComponentId = newJob.components[0].id;
 
+        // Create on server
+        try {
+            const res = await fetch('/api/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newJob)
+            });
+            if (!res.ok) throw new Error('Failed to duplicate job');
+            const data = await res.json();
+            rowVersions[newJob.id] = data.rowVersion;
+        } catch (e) {
+            alert('Error duplicating job: ' + e.message);
+            return;
+        }
+
         jobs.push(newJob);
         saveActiveJobs(jobs);
         loadJobs();
@@ -4836,7 +4907,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
     }
 
     // ========== DUPLICATE COMPONENT ==========
-    function duplicateComponent() {
+    async function duplicateComponent() {
         if (!currentJobId || !currentComponentId) return;
         const jobs = getActiveJobs();
         const job = jobs.find(j => j.id === currentJobId);
@@ -4870,6 +4941,27 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             delete newComp.checkboxes[f];
             delete newComp.notes[f + 'n'];
         });
+
+        // Create on server
+        try {
+            const res = await fetch('/api/jobs/' + job.id + '/components', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...newComp, rowVersion: rowVersions[job.id], lastModifiedBy: getUserName() })
+            });
+            if (res.status === 409) {
+                alert('This job was updated by someone else. Reloading.');
+                await refreshJobs();
+                if (currentJobId) loadJob(currentJobId);
+                return;
+            }
+            if (!res.ok) throw new Error('Failed to duplicate component');
+            const data = await res.json();
+            rowVersions[job.id] = data.rowVersion;
+        } catch (e) {
+            alert('Error duplicating component: ' + e.message);
+            return;
+        }
 
         job.components.push(newComp);
         job.activeComponentId = newComp.id;

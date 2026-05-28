@@ -939,12 +939,12 @@
           <div class="field-row field-indent-1">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp21"><span class="toggle-track"></span></label>
             <span class="field-label">Number of mailstreams</span>
-            <div class="field-input"><input type="text" class="notes" data-id="ts_sp21n"></div>
+            <div class="field-input field-input--narrow"><input type="text" class="notes" data-id="ts_sp21n"></div>
           </div>
           <div class="field-row field-indent-1">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp22"><span class="toggle-track"></span></label>
             <span class="field-label">Splitting criteria</span>
-            <div class="field-input"><input type="text" class="notes" data-id="ts_sp22n"></div>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp22n" rows="1" placeholder="criteria for splitting" oninput="autoResizeTextarea(this)"></textarea></div>
           </div>
 
           <div class="field-subgroup-header">Address fields</div>
@@ -975,6 +975,11 @@
           </div>
 
           <div class="field-row field-row--cb-only">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31a"><span class="toggle-track"></span></label>
+            <span class="field-label">Client review required</span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row field-row--cb-only">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_cb30"><span class="toggle-track"></span></label>
             <span class="field-label">CASS</span>
             <div class="field-input"></div>
@@ -999,11 +1004,6 @@
           <div class="field-row field-row--cb-only">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31"><span class="toggle-track"></span></label>
             <span class="field-label">NCOA</span>
-            <div class="field-input"></div>
-          </div>
-          <div class="field-row field-row--cb-only field-indent-1">
-            <label class="toggle-switch"><input type="checkbox" data-id="ts_cb31a"><span class="toggle-track"></span></label>
-            <span class="field-label">Client review required</span>
             <div class="field-input"></div>
           </div>
           <div class="field-row field-row--cb-only field-indent-1">
@@ -1055,7 +1055,7 @@
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp41"><span class="toggle-track"></span></label>
             <span class="field-label">File priorities</span>
-            <div class="field-input"><input type="text" class="notes" data-id="ts_sp41n" placeholder="define hierarchy (e.g., VIP > General)"></div>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp41n" rows="1" placeholder="define hierarchy (e.g., VIP > General)" oninput="autoResizeTextarea(this)"></textarea></div>
           </div>
 
           <div class="field-subgroup-header">Suppression file</div>
@@ -1070,6 +1070,25 @@
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp42"><span class="toggle-track"></span></label>
             <span class="field-label">Rollup/Table</span>
             <div class="field-input"></div>
+          </div>
+
+          <div class="field-subgroup-header">Other</div>
+          <div class="field-row-pair field-indent-1">
+            <div class="field-row field-row--cb-only">
+              <label class="toggle-switch"><input type="checkbox" data-id="ts_cb50a"><span class="toggle-track"></span></label>
+              <span class="field-label">Matching - #-Way</span>
+              <div class="field-input"></div>
+            </div>
+            <div class="field-row field-row--cb-only">
+              <label class="toggle-switch"><input type="checkbox" data-id="ts_cb50b"><span class="toggle-track"></span></label>
+              <span class="field-label">Match/Append</span>
+              <div class="field-input"></div>
+            </div>
+          </div>
+          <div class="field-row field-indent-1">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp51"><span class="toggle-track"></span></label>
+            <span class="field-label">Casing</span>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_sp51n" placeholder="select one" readonly><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Upper/Lower, Punctuation","Upper/Lower, No Punctuation","All Upper, Punctuation","All Upper, No Punctuation"]'></div></div></div>
           </div>
 
         </div>
@@ -1120,7 +1139,7 @@
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp92"><span class="toggle-track"></span></label>
             <span class="field-label">Number of letter versions</span>
-            <div class="field-input"><input type="text" class="notes" data-id="ts_sp92n" placeholder="numeric"></div>
+            <div class="field-input field-input--narrow"><input type="text" class="notes" data-id="ts_sp92n" placeholder="numeric"></div>
           </div>
           <div class="field-row field-indent-1">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp93a"><span class="toggle-track"></span></label>
@@ -1130,7 +1149,7 @@
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp95"><span class="toggle-track"></span></label>
             <span class="field-label">Samples per letter version</span>
-            <div class="field-input"><input type="text" class="notes" data-id="ts_sp95n" placeholder="numeric"></div>
+            <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp95n" rows="1" placeholder="numeric" oninput="autoResizeTextarea(this)"></textarea></div>
           </div>
           <div class="field-row field-indent-1">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp94"><span class="toggle-track"></span></label>
