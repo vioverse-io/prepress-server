@@ -1015,7 +1015,14 @@
     // ── Server-backed data layer ──
     // jobsCache holds active jobs in memory; refreshed from server on key actions.
     // rowVersions tracks the optimistic lock version per job id.
+    // _saveQueue serializes all server writes so rowVersion never races.
     let rowVersions = {};
+    let _saveQueue = Promise.resolve();
+
+    function queueSave(fn) {
+        _saveQueue = _saveQueue.then(fn, fn);
+        return _saveQueue;
+    }
 
     function getActiveJobs() {
         return jobsCache || [];
@@ -1052,53 +1059,57 @@
         return jobsCache;
     }
 
-    async function persistJob(job) {
-        const now = new Date().toISOString();
-        job.lastModified = now;
-        job.lastModifiedBy = getUserName();
-        const payload = { ...job, rowVersion: rowVersions[job.id] || 1 };
-        delete payload.components; // components are saved separately
-        const res = await fetch('/api/jobs/' + job.id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+    function persistJob(job) {
+        return queueSave(async () => {
+            const now = new Date().toISOString();
+            job.lastModified = now;
+            job.lastModifiedBy = getUserName();
+            const payload = { ...job, rowVersion: rowVersions[job.id] || 1 };
+            delete payload.components;
+            const res = await fetch('/api/jobs/' + job.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.status === 409) {
+                alert('This job was updated by someone else. Reloading to see their changes.');
+                await refreshJobs();
+                if (currentJobId) loadJob(currentJobId);
+                return false;
+            }
+            if (!res.ok) throw new Error('Failed to save job');
+            const data = await res.json();
+            rowVersions[job.id] = data.rowVersion;
+            return true;
         });
-        if (res.status === 409) {
-            alert('This job was updated by someone else. Reloading to see their changes.');
-            await refreshJobs();
-            if (currentJobId) loadJob(currentJobId);
-            return false;
-        }
-        if (!res.ok) throw new Error('Failed to save job');
-        const data = await res.json();
-        rowVersions[job.id] = data.rowVersion;
-        return true;
     }
 
-    async function persistComponent(comp, job) {
-        const payload = {
-            ...comp,
-            checkboxes: comp.checkboxes || {},
-            notes: comp.notes || {},
-            rowVersion: rowVersions[job.id] || 1,
-            lastModified: new Date().toISOString(),
-            lastModifiedBy: getUserName()
-        };
-        const res = await fetch('/api/components/' + comp.id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+    function persistComponent(comp, job) {
+        return queueSave(async () => {
+            const payload = {
+                ...comp,
+                checkboxes: comp.checkboxes || {},
+                notes: comp.notes || {},
+                rowVersion: rowVersions[job.id] || 1,
+                lastModified: new Date().toISOString(),
+                lastModifiedBy: getUserName()
+            };
+            const res = await fetch('/api/components/' + comp.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.status === 409) {
+                alert('This job was updated by someone else. Reloading to see their changes.');
+                await refreshJobs();
+                if (currentJobId) loadJob(currentJobId);
+                return false;
+            }
+            if (!res.ok) throw new Error('Failed to save component');
+            const data = await res.json();
+            rowVersions[job.id] = data.rowVersion;
+            return true;
         });
-        if (res.status === 409) {
-            alert('This job was updated by someone else. Reloading to see their changes.');
-            await refreshJobs();
-            if (currentJobId) loadJob(currentJobId);
-            return false;
-        }
-        if (!res.ok) throw new Error('Failed to save component');
-        const data = await res.json();
-        rowVersions[job.id] = data.rowVersion;
-        return true;
     }
 
     function openNewJobModal() {
