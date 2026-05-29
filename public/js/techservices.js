@@ -54,9 +54,7 @@ window.DEPT_REGISTRY.techservices = {
             { cbId: 'ts_cb30c', noteId: 'ts_cb30c_n', label: 'Drop CASS errors over 90' },
             { cbId: 'ts_cb31', noteId: 'ts_cb31_n', label: 'NCOA' },
             { cbId: 'ts_cb31b_nna', noteId: 'ts_cb31b_nna_n', label: 'Movers w/ No New Address' },
-            { cbId: 'ts_cb31b_orig', noteId: 'ts_cb31b_orig_n', label: 'Mail To Original Address' },
-            { cbId: 'ts_cb31b_mail', noteId: 'ts_cb31b_mail_n', label: 'Mail to movers' },
-            { cbId: 'ts_cb31b_drop', noteId: 'ts_cb31b_drop_n', label: 'Drop movers' }
+            { cbId: 'ts_cb31b_new', noteId: 'ts_cb31b_new_n', label: 'Movers w/ New Address' }
         ]},
         { title: 'Deceased', fields: [
             { cbId: 'ts_cb31c', noteId: 'ts_cb31c_n', label: 'Deceased' },
@@ -170,10 +168,14 @@ window.DEPT_REGISTRY.techservices = {
         if (chk('ts_cb31')) {
             const ncoaClauses = [];
             if (chk('ts_cb31a'))      ncoaClauses.push('client review required before mail file is finalized');
-            if (chk('ts_cb31b_nna'))  ncoaClauses.push('movers with no new address (MLNA) flagged');
-            if (chk('ts_cb31b_orig')) ncoaClauses.push('mail to original address on no-match');
-            if (chk('ts_cb31b_mail')) ncoaClauses.push('forward to new address (MoveFootnote 0/91/92/A)');
-            if (chk('ts_cb31b_drop')) ncoaClauses.push('drop undeliverable movers (MoveFootnote 1/2/3/5/14/19/66)');
+            if (chk('ts_cb31b_nna')) {
+                const nnaAction = (notes['ts_cb31b_nna_n'] || '').trim().toLowerCase();
+                ncoaClauses.push('movers w/ no new address' + (nnaAction ? ': ' + nnaAction : ''));
+            }
+            if (chk('ts_cb31b_new')) {
+                const newAction = (notes['ts_cb31b_new_n'] || '').trim().toLowerCase();
+                ncoaClauses.push('movers w/ new address' + (newAction ? ': ' + newAction : ''));
+            }
             let ncoaText = 'NCOALink move update against the 48-month database';
             if (ncoaClauses.length) ncoaText += '; ' + ncoaClauses.join(', ');
             parts.push(ncoaText + '.');

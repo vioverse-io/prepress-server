@@ -1,14 +1,15 @@
-const sql = require('mssql');
+const useWindowsAuth = (process.env.SQL_AUTH || '').toLowerCase() === 'windows';
+const sql = useWindowsAuth ? require('mssql/msnodesqlv8') : require('mssql');
 
 const config = {
     server: process.env.SQL_SERVER,
     port: parseInt(process.env.SQL_PORT || '1433', 10),
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
     database: process.env.SQL_DATABASE,
+    ...(!useWindowsAuth && { user: process.env.SQL_USER, password: process.env.SQL_PASSWORD }),
     options: {
         encrypt: process.env.SQL_ENCRYPT === 'true',
-        trustServerCertificate: process.env.SQL_TRUST_SERVER_CERT !== 'false'
+        trustServerCertificate: process.env.SQL_TRUST_SERVER_CERT !== 'false',
+        ...(useWindowsAuth && { trustedConnection: true })
     },
     pool: {
         max: 10,

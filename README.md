@@ -1,126 +1,45 @@
-# Prepress Work Order App -- SQL Server Version
+# Prepress Work Order App -- IT Runbook
 
-Internal work order instructions app backed by MS SQL Server. Multiple users on the LAN can view and edit jobs simultaneously.
+Node + MS SQL Server web app. Multi-user, LAN-accessible. Built and supported in-house by David Marra.
 
----
+## Stack
 
-## Local Testing (Docker)
+- Node.js 18+ on the app server
+- MS SQL Server (TCP/IP enabled, port 1433). Windows Authentication.
+- App listens on a port chosen by IT (set in `.env`)
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine in WSL2).
+## Deploy
 
-2. Start a SQL Server container:
-   ```
-   docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourPassword123!" \
-     -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2022-latest
-   ```
+1. Drop the app folder on the server. Suggested: `C:\Apps\prepress-wo-sql`. Avoid `C:\Program Files` (UAC interferes with `.env` reads).
 
-3. Create the database. From the repo root:
-   ```
-   docker exec -i sqlserver /opt/mssql-tools*/bin/sqlcmd -U sa -P "YourPassword123!" < sql/create-database.sql
-   ```
+2. In SSMS, execute `sql\create-database.sql` to create the `PrepressWO` database. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `PrepressWO`. Then switch to that database and execute `sql\create-tables.sql`.
 
-4. Create the tables:
-   ```
-   docker exec -i sqlserver /opt/mssql-tools*/bin/sqlcmd -U sa -P "YourPassword123!" -d PrepressWO < sql/create-tables.sql
-   ```
+3. Copy `.env.example` to `.env` and fill in real values:
 
-5. Copy `.env.example` to `.env` and set the Docker test values:
    ```
-   cp .env.example .env
-   ```
-   Edit `.env`:
-   ```
-   SQL_SERVER=localhost
-   SQL_USER=sa
-   SQL_PASSWORD=YourPassword123!
-   ```
-
-6. Install dependencies:
-   ```
-   npm install
-   ```
-
-7. Start the server:
-   ```
-   node server.js
-   ```
-
-8. Open http://localhost:3000
-
-9. Verify the database connection: http://localhost:3000/api/health should return `{"connected": true}`.
-
----
-
-## IT Production Deployment
-
-1. **Prerequisites:**
-   - Node.js LTS (v18 or newer) on the server that will run the app
-   - SQL Server instance with TCP/IP enabled (port 1433)
-
-2. Create the database. Open SSMS, connect as sysadmin, and run:
-   ```
-   sql/create-database.sql
-   ```
-   This creates the `PrepressWO` database and a `prepress_app` login. **Change the password in the script before running.**
-
-3. Create the tables. In SSMS, switch to the `PrepressWO` database and run:
-   ```
-   sql/create-tables.sql
-   ```
-
-4. Copy `.env.example` to `.env` and fill in the real values:
-   ```
-   cp .env.example .env
-   ```
-   Edit `.env`:
-   ```
-   SQL_SERVER=192.168.1.x      <- your SQL Server IP
+   SQL_SERVER=<sql-host-or-ip>
    SQL_PORT=1433
-   SQL_USER=prepress_app
-   SQL_PASSWORD=<the password you set in step 2>
    SQL_DATABASE=PrepressWO
+   SQL_AUTH=windows
+   SQL_ENCRYPT=false
+   SQL_TRUST_SERVER_CERT=true
+   PORT=<port>
    ```
 
-5. Install dependencies:
-   ```
-   npm install
-   ```
+4. `npm install` in the app folder.
 
-6. Start the server:
-   ```
-   node server.js
-   ```
+5. `node server.js` to start. From the app server itself, verify with `http://localhost:<port>/api/health` -- should return `{"connected": true}`. (Localhost is only for this on-server check; user traffic uses the LAN URL below.)
 
-7. Open http://server-ip:3000 from any machine on the LAN.
+6. Open inbound TCP `<port>` on the app server firewall.
 
-8. **Firewall:** Open port 3000 inbound on the app server so other LAN machines can connect.
+7. Users access the app at `http://<app-server-hostname-or-ip>:<port>` from any LAN machine.
 
-9. Verify: http://server-ip:3000/api/health should return `{"connected": true}`.
+8. Install as a Windows service via NSSM. Path: `node.exe`, Arguments: `server.js`, Startup directory: app folder. **Log On:** set the service to run as the Windows account that was granted SQL access in step 2 (not LocalSystem).
 
-10. **Optional -- run as a Windows service** so the app starts automatically on reboot:
-    - Install [NSSM](https://nssm.cc/): `nssm install PrepressWO`
-    - Path: `C:\Program Files\nodejs\node.exe`
-    - Arguments: `C:\path\to\server-sql\server.js`
-    - Startup directory: `C:\path\to\server-sql`
+## Notes
 
----
-
-## Stopping / Cleanup
-
-- **Stop server:** Ctrl+C in the terminal (or stop the NSSM service)
-- **Stop Docker container:** `docker stop sqlserver`
-- **Remove Docker container:** `docker rm sqlserver`
-- **Data** lives in SQL Server, not in any local file. Nothing to back up on the app server side.
-
----
-
-## How It Works
-
-| IT configures | Just works |
-|---|---|
-| SQL Server IP/port/credentials (.env) | Frontend (all in the browser) |
-| Node.js installation | Job locking (in-memory, no config) |
-| Network/firewall access to port 3000 | Print/PDF (browser print dialog) |
-| | Dark mode, profiles (browser localStorage) |
-
-**Optimistic locking:** When two people edit the same job, the second save shows a conflict message and reloads the latest version. No silent overwrites.
+- **Data** lives in SQL Server. No app-side backups needed; covered by existing SQL Server DBA process.
+- **Updates:** stop the service, replace files (keep `.env`), run `npm install` if `package.json` changed, restart.
+- **ODBC Driver:** The app uses Windows Authentication via the `msnodesqlv8` native driver, which requires the [Microsoft ODBC Driver for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) on the app server. Machines running SQL Server already have it. If the app server is separate, install ODBC Driver 17 or 18 before running `npm install`.
+- **If `/api/health` returns `connected: false`:** check `.env` values, SQL Server TCP/IP is on, and that the service's Windows account has access to `PrepressWO`.
+- **Contact:** David Marra

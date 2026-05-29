@@ -72,6 +72,17 @@
   width: 90px;
 }
 
+/* ── Capped-width dropdown pickers (NCOA actions, dedup method, casing) ── */
+.dept-techservices .field-input--pick {
+  max-width: 320px;
+}
+
+/* ── Textarea floor height -- keep textareas the same depth as text inputs
+      even after autoResizeTextarea sets an inline height ── */
+.dept-techservices .field-input textarea {
+  min-height: 38px !important;
+}
+
 /* ── Paired toggle rows (two cb-only items side by side on one line) ── */
 .dept-techservices .field-row-pair {
   display: flex;

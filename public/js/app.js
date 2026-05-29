@@ -1149,6 +1149,10 @@
             const cb = opt.querySelector('input[type="checkbox"]');
             if (cb) cb.checked = false;
         });
+        // Reset duplicate state
+        _pendingDuplicate = null;
+        document.querySelector('#newJobModal h2').textContent = 'Create New Job';
+        document.getElementById('componentsSelectGroup').style.display = '';
     }
 
     async function createNewJob() {
@@ -1158,15 +1162,31 @@
         if (jobs.some(j => j.jobNumber.trim() === num)) { alert('Job number exists!'); return; }
 
         const now = new Date().toISOString();
-        const selectedComponents = getSelectedComponents();
 
-        // Create components array - use selected or default to "Main"
-        const components = [];
-        if (selectedComponents.length > 0) {
-            selectedComponents.forEach((name, idx) => {
+        // Duplicate flow: use stashed components; otherwise build from picker
+        let components;
+        if (_pendingDuplicate) {
+            components = _pendingDuplicate.components;
+        } else {
+            const selectedComponents = getSelectedComponents();
+            components = [];
+            if (selectedComponents.length > 0) {
+                selectedComponents.forEach((name, idx) => {
+                    components.push({
+                        id: 'comp_' + Date.now() + '_' + idx,
+                        name: name,
+                        instructions_prepress: '',
+                        instructions_techservices: '',
+                        instructionsHistory_prepress: '',
+                        instructionsHistory_techservices: '',
+                        checkboxes: {},
+                        notes: {}
+                    });
+                });
+            } else {
                 components.push({
-                    id: 'comp_' + Date.now() + '_' + idx,
-                    name: name,
+                    id: 'comp_' + Date.now(),
+                    name: 'Main',
                     instructions_prepress: '',
                     instructions_techservices: '',
                     instructionsHistory_prepress: '',
@@ -1174,18 +1194,7 @@
                     checkboxes: {},
                     notes: {}
                 });
-            });
-        } else {
-            components.push({
-                id: 'comp_' + Date.now(),
-                name: 'Main',
-                instructions_prepress: '',
-                instructions_techservices: '',
-                instructionsHistory_prepress: '',
-                instructionsHistory_techservices: '',
-                checkboxes: {},
-                notes: {}
-            });
+            }
         }
 
         const newJob = {
@@ -1205,9 +1214,12 @@
             createdBy: getUserName(),
             lastModified: now,
             lastModifiedBy: getUserName(),
+            duplicatedFrom: _pendingDuplicate ? _pendingDuplicate.duplicatedFrom : undefined,
             components: components,
             activeComponentId: components[0].id
         };
+
+        _pendingDuplicate = null;
 
         try {
             const res = await fetch('/api/jobs', {
@@ -4840,10 +4852,18 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
     });
 
     // ========== DUPLICATE JOB (Option B+C) ==========
-    // Fields to CLEAR on duplicate (file paths + variable print + previous job#)
-    const DUPLICATE_CLEAR_IDS = ['sp1', 'fp1', 'fp2', 'fp3', 'fp4', 'fp6', 'ps11', 'vp1', 'ps12', 'vp3'];
+    // Fields to CLEAR on duplicate (all file paths + variable print + previous job#)
+    const DUPLICATE_CLEAR_IDS = [
+        'sp1',                          // Previous Job#
+        'fp1', 'fp2', 'fp3', 'fp4',    // Artwork, SOF, Mockup, Other paths
+        'fp5', 'fp6', 'fp7',            // Lives, Record Counts, Seeds & Samp
+        'ts_fp10',                       // TS data file locations
+        'ps11', 'vp1', 'ps12', 'vp3'    // Variable print fields
+    ];
 
-    async function duplicateJob() {
+    let _pendingDuplicate = null;
+
+    function duplicateJob() {
         if (!currentJobId) return;
         const jobs = getActiveJobs();
         const original = jobs.find(j => j.id === currentJobId);
@@ -4857,64 +4877,49 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         // Save current state before duplicating
         saveComponentState();
 
-        const now = new Date().toISOString();
-        const newJob = JSON.parse(JSON.stringify(original)); // deep copy
-        newJob.id = Date.now().toString();
-        newJob.jobNumber = original.jobNumber + ' (Copy)';
-        newJob.dateCreated = now;
-        newJob.createdBy = getUserName();
-        newJob.lastModified = now;
-        newJob.lastModifiedBy = getUserName();
-        newJob.duplicatedFrom = original.jobNumber;
-        newJob.assignedToPrepress = '';
-        newJob.assignedToTechservices = '';
-        delete newJob.headerModified;
-        delete newJob.headerModifiedBy;
-
-        // Clear dangerous fields from ALL components
-        newJob.components.forEach((comp, idx) => {
+        // Deep-copy and clean components
+        const components = JSON.parse(JSON.stringify(original.components));
+        components.forEach((comp, idx) => {
             comp.id = 'comp_' + Date.now() + '_' + idx;
             comp.instructions_prepress = '';
             comp.instructions_techservices = '';
             comp.instructionsHistory_prepress = '';
             comp.instructionsHistory_techservices = '';
-            // Strip legacy fields if they somehow survived
             delete comp.instructions;
             delete comp.instructionsHistory;
             delete comp._instructions_legacy_backup;
             delete comp._instructionsHistory_legacy_backup;
 
-            // Clear file paths, variable print, and previous job# checkboxes + notes
             DUPLICATE_CLEAR_IDS.forEach(f => {
                 delete comp.checkboxes[f];
                 delete comp.notes[f + 'n'];
             });
         });
 
-        newJob.activeComponentId = newJob.components[0].id;
+        // Stash for createNewJob() to pick up
+        _pendingDuplicate = {
+            components: components,
+            duplicatedFrom: original.jobNumber
+        };
 
-        // Create on server
-        try {
-            const res = await fetch('/api/jobs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newJob)
-            });
-            if (!res.ok) throw new Error('Failed to duplicate job');
-            const data = await res.json();
-            rowVersions[newJob.id] = data.rowVersion;
-        } catch (e) {
-            alert('Error duplicating job: ' + e.message);
-            return;
-        }
+        // Pre-fill the New Job modal with the original's metadata
+        document.getElementById('jobNumber').value = original.jobNumber + ' (Copy)';
+        document.getElementById('jobDescription').value = original.jobDescription || '';
+        document.getElementById('clientName').value = original.clientName || '';
+        document.getElementById('csrName').value = original.csrName || '';
+        populateAssigneeSelect('newAssignedToPrepress', 'prepress');
+        populateAssigneeSelect('newAssignedToTechservices', 'techservices');
+        document.getElementById('signoffDueDatePrepress').value = '';
+        document.getElementById('signoffDueTimePrepress').value = '';
+        document.getElementById('signoffDueDateTechservices').value = '';
+        document.getElementById('signoffDueTimeTechservices').value = '';
 
-        jobs.push(newJob);
-        saveActiveJobs(jobs);
-        loadJobs();
-        loadJob(newJob.id);
+        // Hide component picker (components inherited from original)
+        document.getElementById('componentsSelectGroup').style.display = 'none';
 
-        // Force open Edit Job modal so CSR must confirm metadata
-        openEditJobModal();
+        document.querySelector('#newJobModal h2').textContent = 'Duplicate Job';
+        document.getElementById('newJobModal').style.display = 'block';
+        setTimeout(() => document.getElementById('jobNumber').focus(), 100);
     }
 
     // ========== DUPLICATE COMPONENT ==========
