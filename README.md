@@ -32,7 +32,7 @@ Node + MS SQL Server web app. Multi-user, LAN-accessible. Built and supported in
 
 6. Open inbound TCP `<port>` on the app server firewall.
 
-7. Users access the app at `http://<app-server-hostname-or-ip>:<port>` from any LAN machine.
+7. Users access the app at `http://<app-server-hostname-or-ip>:<port>` from any LAN machine. The landing page shows a sortable, filterable job table with My Jobs / All Jobs tabs and search.
 
 8. Install as a Windows service via NSSM. Path: `node.exe`, Arguments: `server.js`, Startup directory: app folder. **Log On:** set the service to run as the Windows account that was granted SQL access in step 2 (not LocalSystem).
 
