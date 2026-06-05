@@ -14,7 +14,7 @@
     let currentJobId = null;
     let currentComponentId = null;
     let activeDepartment = 'prepress';
-    const MAX_ACTIVE_JOBS = 20;
+    const MAX_ACTIVE_JOBS = 50;
     const MAX_UNDO_HISTORY = 15;
     const MAX_COMPONENTS = 10;
 

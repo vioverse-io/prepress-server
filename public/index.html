@@ -1168,140 +1168,150 @@
 
       <section class="help-section">
         <h3>What This App Does</h3>
-        <p>A digital work order system for prepress. Create a job, fill in specs, write CSR instructions, and print or share. Everything saves to your browser automatically.</p>
+        <p>Digital work orders for Prepress and Tech Services. Create a job, fill in specs, write instructions, print. Saves to your browser automatically.</p>
       </section>
 
       <section class="help-section">
         <h3>Landing Page</h3>
-        <p>When you open the app, you see your recent work orders.</p>
         <ul>
-          <li><strong>New Work Order (+)</strong> opens a form for job number, client, CSR, and components.</li>
-          <li><strong>Recent grid</strong> &mdash; click any card to jump in.</li>
-          <li><strong>Search bar</strong> &mdash; type a job number or client name to filter.</li>
+          <li><strong>+</strong> creates a new work order.</li>
+          <li>Click any card to open it.</li>
+          <li>Search by job number or client name.</li>
+          <li>Filter by CSR, client, or date range.</li>
         </ul>
-        <p>The landing page also shows <strong>Archived</strong> jobs (restorable) and <strong>Templates</strong> (saved component presets). Filters at the top narrow by CSR, client, or date range.</p>
+        <p>Archived jobs and saved Templates also appear here.</p>
       </section>
 
       <section class="help-section">
         <h3>Creating a Job</h3>
-        <p>Click <strong>+</strong> in the nav bar or on the landing page. Fill in:</p>
-        <ul>
-          <li><strong>Job Number</strong> (required, must be unique)</li>
-          <li><strong>Project Name</strong> (optional, e.g., "Spring Mailer")</li>
-          <li><strong>Client Name</strong> (required, dropdown or type your own)</li>
-          <li><strong>CSR Name</strong> (required, dropdown)</li>
-          <li><strong>Components</strong> &mdash; select which pieces this job includes (Letter, Envelope, etc.). If you skip this, a default "Main" component is created.</li>
-        </ul>
+        <p>Click <strong>+</strong> and fill in Job Number, Client, CSR, and which components the job has (Letter, Envelope, etc.). If you skip components, a default "Main" is created.</p>
       </section>
 
       <section class="help-section">
         <h3>The Job Screen</h3>
 
-        <h4>Header (billboard)</h4>
-        <p>Shows Job#, Customer, CSR, Component, and Version. Click any editable field to change it inline. The <strong>&times;</strong> button closes the job and returns to landing.</p>
-        <p><strong>Version</strong> has a picker (click the code) and a <strong>+</strong> button to auto-increment (A01, A02, A03...).</p>
+        <h4>Header</h4>
+        <p>Shows Job#, Customer, CSR, Component, and Version. Click any field to edit it inline. Version has a picker and a <strong>+</strong> button to auto-increment (A01, A02, A03...).</p>
 
-        <h4>Left Sidebar &mdash; CSR Instructions</h4>
-        <p>A rich text editor (bold, italic, underline, highlight, bullets, text size) for CSR notes.</p>
+        <h4>Department Tabs</h4>
+        <p>Two tabs above the checklist: <strong>Prepress</strong> and <strong>Tech Services</strong>. Click a tab to switch. Each department has its own checklist fields and its own instructions editor. They save independently.</p>
+
+        <h4>Left Sidebar &mdash; Instructions</h4>
+        <p>Rich text editor for instructions. Content is per-department: switching tabs switches the editor too.</p>
         <ul>
-          <li><strong>Generate</strong> button reads your Piece Specs and inserts a formatted summary. If specs change after generating, printing will warn you it's stale.</li>
-          <li><strong>Revisions:</strong> when you close a job, current instructions are timestamped and moved to revision history. The timeline at the bottom lets you click into any past entry.</li>
+          <li><strong>Generate</strong> reads your checklist fields and writes a formatted summary. If fields change after generating, printing warns you it may be stale.</li>
+          <li><strong>Revisions</strong> are saved when you close a job. Click any past entry in the timeline to view it.</li>
         </ul>
         <p>The sidebar is resizable. Drag the handle between the sidebar and checklist.</p>
 
-        <h4>Right Panel &mdash; Checklist</h4>
-        <p>Three collapsible sections of spec fields:</p>
+        <h4>Right Panel &mdash; Prepress Checklist</h4>
+        <p>Three sections:</p>
         <ul>
           <li><strong>Piece Specs</strong> &mdash; Flat Size, Finished Size, Presswork, Press, Press Sheet, Print Marks, Number Up, Indicia, Head Info, Binding, Special Color, Previous Job#</li>
-          <li><strong>File Path</strong> &mdash; Artwork, Mockup, SOF, Lives, Other</li>
+          <li><strong>File Path</strong> &mdash; Artwork, Mockup, SOF, Seeds &amp; Samp, Lives, Record Counts, Other</li>
           <li><strong>Variable Print</strong> &mdash; Address Block, 2D (camera), 2D (inserter), Match Job</li>
         </ul>
-        <p>Each row has a <strong>toggle</strong> (on/off) and a <strong>text field</strong>. Turning a toggle off clears its text (except file paths). Many fields have <strong>dropdown presets</strong> &mdash; click the arrow or type your own.</p>
-        <p><strong>Required fields</strong> (Flat Size, Presswork, Press Sheet, Number Up, Press) show a red dot when empty. Envelopes skip Press Sheet and Number Up.</p>
-        <p><strong>Smart dropdowns:</strong> Flat Size and Press options automatically switch between standard and envelope choices based on the component name.</p>
+        <p>Each row has a toggle and a text field. Many fields have dropdown presets (click the arrow). Required fields show a red dot when empty. Flat Size and Press options switch automatically for envelope components.</p>
+
+        <h4>Right Panel &mdash; Tech Services Checklist</h4>
+        <p>Five sections:</p>
+        <ul>
+          <li><strong>Data Conversion</strong> &mdash; file locations, mailstreams, splitting, addressing fields</li>
+          <li><strong>NCOA / CASS</strong> &mdash; address standardization, move updates, deceased suppression</li>
+          <li><strong>Deduplication</strong> &mdash; method, file priorities, suppression match, rollup</li>
+          <li><strong>Presort</strong> &mdash; placeholder (pending finalization)</li>
+          <li><strong>Print</strong> &mdash; meeting required, variables, letter versions, signoffs, samples</li>
+        </ul>
+        <p>Same toggle + text pattern as Prepress. "Data file locations" is the only required field for now.</p>
       </section>
 
       <section class="help-section">
-        <h3>Component Tabs</h3>
+        <h3>Components</h3>
         <p>Jobs can have up to 10 components (e.g., Letter + Envelope + Buckslip). Tabs appear above the checklist.</p>
         <ul>
           <li>Click a tab to switch.</li>
-          <li>Double-click a tab name to rename.</li>
-          <li>Click <strong>+</strong> to add a new component (optionally from a template).</li>
-          <li>Click <strong>&times;</strong> on a tab to delete it (only when more than one).</li>
+          <li>Double-click to rename.</li>
+          <li><strong>+</strong> adds a new component (optionally from a template).</li>
+          <li><strong>&times;</strong> deletes it (only when more than one).</li>
         </ul>
         <p>Each component has its own checklist, instructions, and version.</p>
       </section>
 
       <section class="help-section">
-        <h3>Nav Bar Actions</h3>
+        <h3>Nav Bar</h3>
         <table class="help-table">
-          <tr><td><strong>Home icon</strong></td><td>Back to landing (warns if required fields missing)</td></tr>
+          <tr><td><strong>Home</strong></td><td>Back to landing</td></tr>
           <tr><td><strong>+</strong></td><td>New work order</td></tr>
-          <tr><td><strong>Printer</strong></td><td>Print current component or all components</td></tr>
-          <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
-          <tr><td><strong>Undo / Redo</strong></td><td>Undo/redo changes (Ctrl+Z / Ctrl+Y)</td></tr>
+          <tr><td><strong>Printer</strong></td><td>Print current, all components, or all as one PDF</td></tr>
+          <tr><td><strong>Undo / Redo</strong></td><td>Ctrl+Z / Ctrl+Y</td></tr>
           <tr><td><strong>...</strong></td><td>Edit Job, Duplicate, Templates, Reset, Delete, Import/Export, Backup, Text Size</td></tr>
-          <tr><td><strong>?</strong></td><td>This guide</td></tr>
-          <tr><td><strong>Search</strong></td><td>Highlights matching field labels, auto-expands collapsed sections</td></tr>
+          <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
+          <tr><td><strong>Book icon</strong></td><td>This guide</td></tr>
+          <tr><td><strong>Moon/Sun</strong></td><td>Dark mode toggle</td></tr>
+          <tr><td><strong>Search</strong></td><td>Highlights matching fields, auto-expands collapsed sections</td></tr>
         </table>
       </section>
 
       <section class="help-section">
         <h3>Printing</h3>
-        <p>Two options in the print dropdown:</p>
+        <p>Three options:</p>
         <ul>
-          <li><strong>Print Current</strong> &mdash; prints the active component.</li>
-          <li><strong>Print All Components</strong> &mdash; prints every component in sequence.</li>
+          <li><strong>Print Current</strong> &mdash; active component only.</li>
+          <li><strong>Print All Components</strong> &mdash; each component as a separate page.</li>
+          <li><strong>Print All as One PDF</strong> &mdash; all components combined into one document.</li>
         </ul>
-        <p>Before printing, the app checks: required fields filled, specs physically valid (e.g., flat size vs. finished size), and specs summary up to date. You can override warnings.</p>
+        <p>Output uses the active department's color (red for Prepress, blue for Tech Services) and only shows that department's instructions and fields. The app warns if required fields are empty or the generated summary is out of date.</p>
       </section>
 
       <section class="help-section">
         <h3>Templates</h3>
-        <p>Save a component's checklist as a reusable template: <strong>More &gt; Save as Template</strong>. When adding a new component, select a template to pre-fill checkboxes and notes. Templates appear on the landing page.</p>
+        <p><strong>More &gt; Save as Template</strong> saves the current component's checklist for reuse. When adding a new component, pick a template to pre-fill it.</p>
       </section>
 
       <section class="help-section">
         <h3>Duplicating</h3>
         <ul>
-          <li><strong>Duplicate Job</strong> &mdash; copies the entire job. Clears instructions, file paths, variable print, and previous job#. Opens Edit Job so you can update the number.</li>
-          <li><strong>Duplicate Component</strong> &mdash; copies the current component within the same job. Same clearing rules.</li>
+          <li><strong>Duplicate Job</strong> &mdash; copies everything. Clears instructions, file paths, and variable print so you start fresh on those.</li>
+          <li><strong>Duplicate Component</strong> &mdash; copies within the same job. Same clearing rules.</li>
         </ul>
       </section>
 
       <section class="help-section">
         <h3>Import / Export</h3>
         <ul>
-          <li><strong>Export</strong> &mdash; pick which jobs to include, downloads a .json file.</li>
-          <li><strong>Import</strong> &mdash; load a .json file. Preview shows what will be imported and flags duplicates.</li>
+          <li><strong>Export</strong> &mdash; pick jobs, downloads a .json file.</li>
+          <li><strong>Import</strong> &mdash; load a .json file. Shows a preview and flags duplicates.</li>
         </ul>
       </section>
 
       <section class="help-section">
         <h3>Data &amp; Backup</h3>
-        <p>All data lives in your browser's localStorage. A secondary copy auto-saves to IndexedDB. If localStorage is ever cleared, the app auto-recovers from IndexedDB on next load.</p>
-        <p><strong>Restore from Backup</strong> (in the More menu) lets you manually pull from the IndexedDB backup.</p>
+        <p>Data lives in your browser's localStorage with an automatic IndexedDB backup. If localStorage gets cleared, the app recovers from IndexedDB on next load. <strong>More &gt; Restore from Backup</strong> lets you pull from it manually.</p>
       </section>
 
       <section class="help-section">
         <h3>Profile</h3>
-        <p>Click the profile circle (top right) to set your nickname and upload a photo. Use the zoom slider and drag to crop your photo to fit the circle. Your name appears on timestamps and triggers personalized greetings on the landing page.</p>
+        <p>Click the profile circle (top right) to set a nickname and photo. Your name appears on timestamps and triggers greetings on the landing page.</p>
       </section>
 
       <section class="help-section">
         <h3>Admin Password</h3>
-        <p>Destructive actions (delete job, delete template) require an admin password. This guards against accidental deletion.</p>
+        <p>Deleting a job or template requires an admin password to prevent accidents.</p>
       </section>
 
       <!-- TODO: Add "Shared Editing" tutorial section when internal server goes live.
            Covers: lock banner ("X is editing this job"), View Read-Only vs Edit Anyway,
            heartbeat/auto-expire behavior, what happens on tab close. -->
 
+      <section class="help-section">
+        <h3>Server Version (Coming Soon)</h3>
+        <p>A server-backed version is in progress. It will run on the company network and let multiple people view and edit jobs at the same time. Data will live on a shared SQL Server database instead of in the browser. The interface stays the same.</p>
+      </section>
+
       <section class="help-section help-section-limits">
         <h3>Limits</h3>
         <ul>
-          <li>20 active jobs max (archive old ones to make room)</li>
+          <li>20 active jobs (archive old ones to make room)</li>
           <li>10 components per job</li>
           <li>15 undo steps</li>
         </ul>
