@@ -236,59 +236,131 @@
 
 <!-- ═══ NO JOB STATE ═══ -->
 <div class="no-job" id="noJobState">
-  <div class="no-job-left">
-    <h2 id="landingGreeting" class="greeting-heading">Select or Create a Work Order</h2>
-    <p>Choose an existing order or start a new one</p>
-    <div class="no-job-actions">
-      <button onclick="openNewJobModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Work Order</button>
-      <div class="job-selector-custom" style="width:100%;">
-        <button class="job-selector-button" type="button" id="jobSelectorButton">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <span>Browse Work Orders</span>
-        </button>
-        <div class="job-selector-dropdown" id="jobSelectorDropdown">
-          <div class="job-selector-header">
-            <input type="checkbox" id="selectAllJobsCheckbox">
-            <label for="selectAllJobsCheckbox">Select All</label>
-          </div>
-          <div class="job-list-container" id="jobListContainer"></div>
-          <div class="job-selector-actions">
-            <button class="btn-delete-selected" type="button" id="deleteSelectedBtn" onclick="deleteSelectedJobs()" disabled>Delete Selected (0)</button>
-          </div>
+  <!-- Hidden browse dropdown (kept for JS compatibility) -->
+  <div style="display:none">
+    <div class="job-selector-custom">
+      <button class="job-selector-button" type="button" id="jobSelectorButton"><span>Browse Work Orders</span></button>
+      <div class="job-selector-dropdown" id="jobSelectorDropdown">
+        <div class="job-selector-header">
+          <input type="checkbox" id="selectAllJobsCheckbox">
+          <label for="selectAllJobsCheckbox">Select All</label>
+        </div>
+        <div class="job-list-container" id="jobListContainer"></div>
+        <div class="job-selector-actions">
+          <button class="btn-delete-selected" type="button" id="deleteSelectedBtn" onclick="deleteSelectedJobs()" disabled>Delete Selected (0)</button>
         </div>
       </div>
     </div>
-    <div class="job-search-wrapper">
-      <input type="text" id="jobSearchInput" class="job-search-input" placeholder="Search by job # or client..." autocomplete="off">
-      <div class="job-search-results" id="jobSearchResults"></div>
+  </div>
+
+  <div class="landing">
+    <!-- Header -->
+    <div class="landing-header">
+      <div class="landing-greeting-wrap">
+        <span id="landingGreeting" class="landing-greeting">Select or Create a Work Order</span>
+        <span class="landing-subtitle"><span class="live-dot"></span><span id="landingJobCount"></span></span>
+      </div>
+      <div class="landing-actions">
+        <div class="search-wrapper">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="landing-search" id="landingSearchInput" placeholder="Search jobs, clients, CSRs..." autocomplete="off">
+        </div>
+        <button class="btn-refresh" onclick="refreshLanding()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+        <button class="btn-new-job" onclick="openNewJobModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Work Order
+        </button>
+      </div>
+    </div>
+
+    <!-- View tabs -->
+    <div class="view-tabs" id="viewTabs"></div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-label">Filter</span>
+
+      <button class="filter-pill active" data-dept="all" onclick="setDeptFilter('all')">All Depts</button>
+      <button class="filter-pill dept-prepress" data-dept="prepress" onclick="setDeptFilter('prepress')">Prepress</button>
+      <button class="filter-pill dept-ts" data-dept="techservices" onclick="setDeptFilter('techservices')">Tech Services</button>
+
+      <span class="filter-sep"></span>
+
+      <div class="filter-btn" id="filterCSRBtn" onclick="toggleFilterDropdown(event, 'filterCSRDropdown')">
+        CSR <span class="filter-count-badge" id="filterCSRCount" style="display:none"></span> <span class="filter-arrow">&#9662;</span>
+        <div class="filter-dropdown" id="filterCSRDropdown" onclick="event.stopPropagation()">
+          <input type="text" class="filter-dropdown-search" placeholder="Search CSRs..." oninput="filterDropdownList(this)">
+          <div class="filter-dropdown-list" id="filterCSRList"></div>
+          <div class="filter-dropdown-actions">
+            <button onclick="clearFilterDropdown('CSR')">Clear all</button>
+            <button class="apply-btn" onclick="applyFilterDropdown('CSR')">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-btn" id="filterAssigneeBtn" onclick="toggleFilterDropdown(event, 'filterAssigneeDropdown')">
+        Assignee <span class="filter-count-badge" id="filterAssigneeCount" style="display:none"></span> <span class="filter-arrow">&#9662;</span>
+        <div class="filter-dropdown" id="filterAssigneeDropdown" onclick="event.stopPropagation()">
+          <input type="text" class="filter-dropdown-search" placeholder="Search assignees..." oninput="filterDropdownList(this)">
+          <div class="filter-dropdown-list" id="filterAssigneeList"></div>
+          <div class="filter-dropdown-actions">
+            <button onclick="clearFilterDropdown('Assignee')">Clear all</button>
+            <button class="apply-btn" onclick="applyFilterDropdown('Assignee')">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-btn" id="filterClientBtn" onclick="toggleFilterDropdown(event, 'filterClientDropdown')">
+        Client <span class="filter-count-badge" id="filterClientCount" style="display:none"></span> <span class="filter-arrow">&#9662;</span>
+        <div class="filter-dropdown" id="filterClientDropdown" onclick="event.stopPropagation()">
+          <input type="text" class="filter-dropdown-search" placeholder="Search clients..." oninput="filterDropdownList(this)">
+          <div class="filter-dropdown-list" id="filterClientList"></div>
+          <div class="filter-dropdown-actions">
+            <button onclick="clearFilterDropdown('Client')">Clear all</button>
+            <button class="apply-btn" onclick="applyFilterDropdown('Client')">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <span class="filter-sep"></span>
+
+      <button class="filter-pill" data-time="today" onclick="setTimeFilter('today')">Today</button>
+      <button class="filter-pill" data-time="week" onclick="setTimeFilter('week')">This Week</button>
+      <button class="filter-pill" data-time="month" onclick="setTimeFilter('month')">This Month</button>
+      <button class="filter-pill active" data-time="all" onclick="setTimeFilter('all')">All Time</button>
+
+      <button class="filter-clear-pill" id="clearFiltersBtn" onclick="clearLandingFilters()" style="display:none">Clear Filters &times;</button>
+    </div>
+
+    <!-- Job table -->
+    <div class="job-table-wrap" id="jobTableWrap">
+      <table class="job-table" id="jobTable">
+        <thead>
+          <tr>
+            <th onclick="setSortColumn('jobNumber')">Job# <span class="sort-arrow" id="sort-jobNumber"></span></th>
+            <th onclick="setSortColumn('clientName')">Client <span class="sort-arrow" id="sort-clientName"></span></th>
+            <th onclick="setSortColumn('jobDescription')">Project <span class="sort-arrow" id="sort-jobDescription"></span></th>
+            <th onclick="setSortColumn('csrName')">CSR <span class="sort-arrow" id="sort-csrName"></span></th>
+            <th onclick="setSortColumn('assignee')">Assigned <span class="sort-arrow" id="sort-assignee"></span></th>
+            <th onclick="setSortColumn('lastModified')">Modified <span class="sort-arrow active" id="sort-lastModified">&#9662;</span></th>
+            <th onclick="setSortColumn('status')">Status <span class="sort-arrow" id="sort-status"></span></th>
+            <th>Depts</th>
+          </tr>
+        </thead>
+        <tbody id="jobTableBody"></tbody>
+      </table>
+      <div class="pagination" id="paginationControls"></div>
+    </div>
+
+    <!-- Bottom: Archive + Templates -->
+    <div class="bottom-row">
+      <div class="bottom-section" id="archivedJobs"></div>
+      <div class="bottom-section" id="templatesCol"></div>
     </div>
   </div>
-  <div class="landing-filters">
-    <div class="landing-filters-label">Filter</div>
-    <div class="filter-group">
-      <label for="filterCSR">CSR</label>
-      <select id="filterCSR" onchange="applyLandingFilters()">
-        <option value="">All</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label for="filterClient">Client</label>
-      <input type="text" id="filterClient" placeholder="Client name..." autocomplete="off" oninput="applyLandingFilters()">
-    </div>
-    <div class="filter-group">
-      <label for="filterDateFrom">From</label>
-      <input type="date" id="filterDateFrom" onchange="applyLandingFilters()">
-    </div>
-    <div class="filter-group">
-      <label for="filterDateTo">To</label>
-      <input type="date" id="filterDateTo" onchange="applyLandingFilters()">
-    </div>
-    <button class="filter-clear-btn" onclick="clearLandingFilters()" title="Clear all filters">Clear</button>
-    <span class="filter-result-count" id="filterResultCount"></span>
-  </div>
-  <div class="recent-jobs" id="recentJobs"></div>
-  <div class="archived-jobs" id="archivedJobs"></div>
-  <div class="templates-col" id="templatesCol"></div>
 </div>
 
 <!-- ═══ NEW JOB MODAL ═══ -->
@@ -366,6 +438,7 @@
       "CMI",
       "Coast Technology",
       "Community Bank",
+      "Command Direct",
       "Compu-Mail",
       "CPS",
       "CTG Group",
@@ -640,7 +713,7 @@
       <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="editClientName" required autocomplete="off">
         <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
         <div class="quick-pick-menu" data-options='[
-          "3AM Innovations","AAA","AAA Central Penn","AAA Hoosiers","AAA Hudson Valley","AAA Minneapolis","AAA North Penn","AAA Northampton","AAA Northway","AAA Reading Berks","AAA Schuylkill","AAA Shelby County","Akron Rule","Ad Specialty Solutions LLC","Adirondack Explorer","AIIM","Albany Law School","Al Sigl","Allied Motion","AMC","American Atheist","Amherst Memorial Chapel","Amplified","And More Marketing","Apex Dental","ARIC","ArtPark","B and L","Beaches","Berenson","Bills Foundation","BMG","Bob Weaver Motorsports","Bonadio Group","BPO","Brochures Unlimited","Buffalo Academyof Science","Buffalo Audubon Society","Buffalo Bills","Buffalo Canvas","BuffaloCleaning","Buffalo Fine Arts","Buffalo History Museum","Buffalo Museum of Science","Buffalo Oral Surgery","Buffalo Regals Hockey","Buffalo Sabres","Burchfield Penney","Burgio & Campofelice","Cambria Fire","Campbell Travel","CanisusCollege","CarX","Catholic Charities","Catholic Health System","CCFCS","Center for Inquiry Periodical","Charlie Butcher","Childrens Hospital Fdn","City Action","CMI","Coast Technology","Community Bank","Compu-Mail","CPS","CTG Group","Data-Mation","Dave Cacciatore","Delaware North","Delta Sonic","DesignNY","DiCamillo","DiMinos Tops","Direct Security","Dixon Schwabl","East House","Elderwood","EnSol","Erie 1 Boces","ERW","Estiator","Evergreen Health","EZFlats","Fastenal","First Amherst","Foodlink","FR Remley","Freed Maxick","Frontier","Garrett Leather","Gelia","GEVA","Getzville Fire Company","Global Indemnity","Grand Island CSD","Grand Island Chamber","GreenKnight Landscaping","Hope Rising","Horizon Health","Hospice","Hub Scrap","Hudson Park River Trust","ICC Commonwealth","Independent Health","Independent Health Foundation","Independent Health Fulfillment","Independent Health Self Funded Services","JFD Sports","JLawrence","Junior League","Kahana Feld","Kelleher Law","Ken Ton Family Support","Kingdom Bound","Krown Rust Control","Krystal Klear","KSV","Lancaster Fire","Lancaster Football","LewistonCouncil on the Arts","Lewiston Fire Co","Lewiston Kiwanis","LS&S","Luminus","Main Place Liberty","Manzella","Massena Hospital","Microhealth","Mr Smith Agency","NAMI","Napolis","Natures Lawn","Neighbor to Neighbor","NERG","NewsMax","NF City Market","NFRRS","NFTA","Night Out","Niagara Cty Deputy Sheriff","Niagara Falls Country Club","Niagara Falls Public Library","Niagara Falls Sports Hall Of Fame","Niagara Hospice","Niagara Pumpkin","Niagara University","Northtown Automotive","NTS","NYSWA","OLV","Orleans County","Park Ave","PDM","Pediatric Specialty Care","PGP","Print2Web","Proforma","Propitious Media","Razorfish","Revive Wesleyan","Ricotta & Ricotta","RMF","Robert Garey","Roswell","Roy-Hart","Sacred Heart","Safetec","SaveonSP","Seneca Gaming","Seneca Niagara","Service Collaboration WNY","Short N Numbers","Soflo Clean Water","Spaghetti & Meatballs","St. Adalberts","St. Francis Prep","St. Lawrence","Stannp","Sunday Driver","SUNY BuffState","Switzer Precision","TASC","Taste of Buffalo","The Chapel","The Martin Group","Tim Thomas","Tops Markets","Transitowne","Twin District","UB","UB Architecture","UB Campus Dining","UB Career Design","UB Orientation","UB School Of Nursing","University Libraries","Unreal Digital","USA Insulation","Veterans Outreach Center","Virginia Wireless","Vivrelle","Walden Galleria","Western Division FCU","West Seneca West","Wilcor","Williamsville North","Wind Spirit People And Places","Wireless Infrastructure","WNY Heritage","WNYIL","YMCA"
+          "3AM Innovations","AAA","AAA Central Penn","AAA Hoosiers","AAA Hudson Valley","AAA Minneapolis","AAA North Penn","AAA Northampton","AAA Northway","AAA Reading Berks","AAA Schuylkill","AAA Shelby County","Akron Rule","Ad Specialty Solutions LLC","Adirondack Explorer","AIIM","Albany Law School","Al Sigl","Allied Motion","AMC","American Atheist","Amherst Memorial Chapel","Amplified","And More Marketing","Apex Dental","ARIC","ArtPark","B and L","Beaches","Berenson","Bills Foundation","BMG","Bob Weaver Motorsports","Bonadio Group","BPO","Brochures Unlimited","Buffalo Academyof Science","Buffalo Audubon Society","Buffalo Bills","Buffalo Canvas","BuffaloCleaning","Buffalo Fine Arts","Buffalo History Museum","Buffalo Museum of Science","Buffalo Oral Surgery","Buffalo Regals Hockey","Buffalo Sabres","Burchfield Penney","Burgio & Campofelice","Cambria Fire","Campbell Travel","CanisusCollege","CarX","Catholic Charities","Catholic Health System","CCFCS","Center for Inquiry Periodical","Charlie Butcher","Childrens Hospital Fdn","City Action","CMI","Coast Technology","Community Bank","Command Direct","Compu-Mail","CPS","CTG Group","Data-Mation","Dave Cacciatore","Delaware North","Delta Sonic","DesignNY","DiCamillo","DiMinos Tops","Direct Security","Dixon Schwabl","East House","Elderwood","EnSol","Erie 1 Boces","ERW","Estiator","Evergreen Health","EZFlats","Fastenal","First Amherst","Foodlink","FR Remley","Freed Maxick","Frontier","Garrett Leather","Gelia","GEVA","Getzville Fire Company","Global Indemnity","Grand Island CSD","Grand Island Chamber","GreenKnight Landscaping","Hope Rising","Horizon Health","Hospice","Hub Scrap","Hudson Park River Trust","ICC Commonwealth","Independent Health","Independent Health Foundation","Independent Health Fulfillment","Independent Health Self Funded Services","JFD Sports","JLawrence","Junior League","Kahana Feld","Kelleher Law","Ken Ton Family Support","Kingdom Bound","Krown Rust Control","Krystal Klear","KSV","Lancaster Fire","Lancaster Football","LewistonCouncil on the Arts","Lewiston Fire Co","Lewiston Kiwanis","LS&S","Luminus","Main Place Liberty","Manzella","Massena Hospital","Microhealth","Mr Smith Agency","NAMI","Napolis","Natures Lawn","Neighbor to Neighbor","NERG","NewsMax","NF City Market","NFRRS","NFTA","Night Out","Niagara Cty Deputy Sheriff","Niagara Falls Country Club","Niagara Falls Public Library","Niagara Falls Sports Hall Of Fame","Niagara Hospice","Niagara Pumpkin","Niagara University","Northtown Automotive","NTS","NYSWA","OLV","Orleans County","Park Ave","PDM","Pediatric Specialty Care","PGP","Print2Web","Proforma","Propitious Media","Razorfish","Revive Wesleyan","Ricotta & Ricotta","RMF","Robert Garey","Roswell","Roy-Hart","Sacred Heart","Safetec","SaveonSP","Seneca Gaming","Seneca Niagara","Service Collaboration WNY","Short N Numbers","Soflo Clean Water","Spaghetti & Meatballs","St. Adalberts","St. Francis Prep","St. Lawrence","Stannp","Sunday Driver","SUNY BuffState","Switzer Precision","TASC","Taste of Buffalo","The Chapel","The Martin Group","Tim Thomas","Tops Markets","Transitowne","Twin District","UB","UB Architecture","UB Campus Dining","UB Career Design","UB Orientation","UB School Of Nursing","University Libraries","Unreal Digital","USA Insulation","Veterans Outreach Center","Virginia Wireless","Vivrelle","Walden Galleria","Western Division FCU","West Seneca West","Wilcor","Williamsville North","Wind Spirit People And Places","Wireless Infrastructure","WNY Heritage","WNYIL","YMCA"
         ]'></div>
       </div></div>
       <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rich Owen", "Rosette Jowsey", "Sharon Woodruff", "Stef Tarpy"]'></div></div></div>

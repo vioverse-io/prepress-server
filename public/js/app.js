@@ -636,6 +636,12 @@
         } else {
             el.textContent = 'Select or Create a Work Order';
         }
+        const countEl = document.getElementById('landingJobCount');
+        if (countEl) {
+            const jobs = getActiveJobs();
+            const connMsg = 'Connected to SQL Server';
+            countEl.textContent = connMsg + ' -- ' + jobs.length + ' active job' + (jobs.length !== 1 ? 's' : '');
+        }
     }
 
     // Close profile popover on outside click
@@ -822,8 +828,8 @@
         document.getElementById('selectAllJobsCheckbox').checked = false;
         updateDeleteSelectedButton();
 
-        // Render recent jobs, archive, and templates on landing page
-        renderRecentJobs(jobs);
+        // Render landing page table, archive, and templates
+        applyLandingFilters();
         renderArchivedJobs();
         renderTemplatesCol();
 
@@ -876,139 +882,371 @@
 
     let jobsCache = null;
 
-    let recentJobsExpanded = false;
+    // ── Landing page state (v2 -- list view) ──
+    let landingViewTab = 'all'; // 'my' or 'all'
+    let landingCurrentPage = 1;
+    let landingPageSize = 10;
+    let landingSortColumn = 'lastModified';
+    let landingSortDir = 'desc';
+    let landingDeptFilter = 'all';
+    let landingTimeFilter = 'all';
+    let landingSelectedCSRs = [];
+    let landingSelectedAssignees = [];
+    let landingSelectedClients = [];
+    let landingSearchQuery = '';
 
-    function toggleRecentExpanded() {
-        recentJobsExpanded = !recentJobsExpanded;
+    function setLandingViewTab(tab) {
+        landingViewTab = tab;
+        landingCurrentPage = 1;
         applyLandingFilters();
     }
 
-    function renderRecentJobs(jobs, showAll) {
-        const container = document.getElementById('recentJobs');
-        if (!container) return;
-        if (jobs.length === 0) {
-            container.innerHTML = showAll ? '<div class="no-jobs-message">No matching jobs</div>' : '';
-            return;
-        }
-        const PAGE = 9;
-        const MAX_SHOWN = 18;
-        const expanded = showAll || recentJobsExpanded;
-        const showCount = expanded ? Math.min(jobs.length, MAX_SHOWN) : PAGE;
-        const recent = jobs.slice(0, showCount);
-        const remaining = jobs.length - showCount;
-        const jobButtons = recent.map(j => {
-            const desc = j.jobDescription ? ` - ${j.jobDescription}` : '';
-            const label = `${j.jobNumber} - ${j.clientName}${desc}`;
-            const reqStatus = getRequiredStatusForJob(j);
-            const dotClass = reqStatus.allComplete ? 'dot-complete' : 'dot-incomplete';
-            return `<div class="recent-job-row"><button class="recent-job-btn" onclick="loadJob('${j.id}')" title="${escHtml(label)}"><span class="recent-job-dot ${dotClass}"></span>${escHtml(label)}</button><button class="recent-job-delete" onclick="deleteSingleJob('${j.id}')" title="Delete">&times;</button></div>`;
-        }).join('');
-        let footer = '';
-        if (!expanded && jobs.length > PAGE) {
-            footer = '<button class="recent-jobs-more" onclick="toggleRecentExpanded()">+' + (jobs.length - PAGE) + ' more</button>';
-        } else if (expanded && remaining > 0) {
-            footer = '<button class="recent-jobs-more" onclick="toggleRecentExpanded()">Show less</button>' +
-                '<span class="recent-jobs-more" style="cursor:default;color:var(--ink-muted);margin-left:8px;">+' + remaining + ' more in Browse Work Orders</span>';
-        } else if (expanded && jobs.length > PAGE) {
-            footer = '<button class="recent-jobs-more" onclick="toggleRecentExpanded()">Show less</button>';
-        }
-        container.innerHTML =
-            '<div class="recent-jobs-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:8px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Recent</div>' +
-            '<div class="recent-jobs-list">' + jobButtons + '</div>' +
-            footer;
+    function isMyJob(job) {
+        const me = getUserName().toLowerCase();
+        if (!me) return false;
+        return (job.assignedToPrepress || '').toLowerCase() === me ||
+               (job.assignedToTechservices || '').toLowerCase() === me;
     }
 
-    // ========== JOB SEARCH (landing page) ==========
-    (function() {
-        const input = document.getElementById('jobSearchInput');
-        const results = document.getElementById('jobSearchResults');
-        if (!input || !results) return;
+    function setDeptFilter(dept) {
+        landingDeptFilter = dept;
+        landingCurrentPage = 1;
+        document.querySelectorAll('#filterBar .filter-pill[data-dept]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.dept === dept);
+        });
+        applyLandingFilters();
+    }
 
-        let highlightedIndex = -1;
+    function setTimeFilter(time) {
+        landingTimeFilter = time;
+        landingCurrentPage = 1;
+        document.querySelectorAll('#filterBar .filter-pill[data-time]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.time === time);
+        });
+        applyLandingFilters();
+    }
 
-        input.addEventListener('input', () => {
-            const q = input.value.trim().toLowerCase();
-            if (!q) {
-                results.classList.remove('open');
-                results.innerHTML = '';
-                highlightedIndex = -1;
-                return;
-            }
+    function setSortColumn(col) {
+        if (landingSortColumn === col) {
+            landingSortDir = landingSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            landingSortColumn = col;
+            landingSortDir = col === 'lastModified' ? 'desc' : 'asc';
+        }
+        applyLandingFilters();
+    }
 
-            const jobs = getActiveJobs();
-            const matches = jobs.filter(j => {
-                const searchable = `${j.jobNumber} ${j.clientName} ${j.jobDescription || ''}`.toLowerCase();
-                return searchable.includes(q);
-            }).slice(0, 8);
+    function setLandingPage(page) {
+        landingCurrentPage = page;
+        applyLandingFilters();
+    }
 
-            if (matches.length === 0) {
-                results.innerHTML = '<div class="job-search-no-results">No matching jobs</div>';
-                results.classList.add('open');
-                highlightedIndex = -1;
-                return;
-            }
+    function setLandingPageSize(size) {
+        landingPageSize = size;
+        landingCurrentPage = 1;
+        applyLandingFilters();
+    }
 
-            results.innerHTML = matches.map((j, i) => {
-                const desc = j.jobDescription ? ` - ${j.jobDescription}` : '';
-                const label = `${j.jobNumber} - ${j.clientName}${desc}`;
-                return `<div class="job-search-result${i === 0 ? ' highlighted' : ''}" data-job-id="${j.id}">${escHtml(label)}</div>`;
-            }).join('');
-            highlightedIndex = 0;
+    function refreshLanding() {
+        jobsCache = null;
+        loadJobs();
+    }
 
-            results.querySelectorAll('.job-search-result').forEach(el => {
-                el.addEventListener('click', () => {
-                    input.value = '';
-                    results.classList.remove('open');
-                    results.innerHTML = '';
-                    loadJob(el.dataset.jobId);
-                });
+    // ── Multi-select filter dropdowns ──
+    function toggleFilterDropdown(event, dropdownId) {
+        event.stopPropagation();
+        const dd = document.getElementById(dropdownId);
+        const wasOpen = dd.classList.contains('open');
+        document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
+        if (!wasOpen) {
+            dd.classList.add('open');
+            populateFilterDropdown(dropdownId);
+            const searchInput = dd.querySelector('.filter-dropdown-search');
+            if (searchInput) { searchInput.value = ''; setTimeout(() => searchInput.focus(), 50); }
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.filter-btn')) {
+            document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
+        }
+    });
+
+    function populateFilterDropdown(dropdownId) {
+        const jobs = getActiveJobs();
+        let listId, values, selectedArr;
+        if (dropdownId === 'filterCSRDropdown') {
+            listId = 'filterCSRList';
+            const fromJobs = jobs.map(j => (j.csrName || '').trim()).filter(Boolean);
+            values = [...new Set([...CSR_NAMES, ...fromJobs])].sort();
+            selectedArr = landingSelectedCSRs;
+        } else if (dropdownId === 'filterAssigneeDropdown') {
+            listId = 'filterAssigneeList';
+            const knownAssignees = [];
+            Object.values(window.DEPT_REGISTRY || {}).forEach(dept => {
+                if (dept.ASSIGNEE_OPTIONS) knownAssignees.push(...dept.ASSIGNEE_OPTIONS);
             });
-
-            results.classList.add('open');
-        });
-
-        input.addEventListener('keydown', e => {
-            const items = results.querySelectorAll('.job-search-result');
-            if (!items.length) return;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (highlightedIndex < items.length - 1) {
-                    items.forEach(el => el.classList.remove('highlighted'));
-                    highlightedIndex++;
-                    items[highlightedIndex].classList.add('highlighted');
-                    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+            const fromJobs = new Set();
+            jobs.forEach(j => {
+                if (j.assignedToPrepress) fromJobs.add(j.assignedToPrepress.trim());
+                if (j.assignedToTechservices) fromJobs.add(j.assignedToTechservices.trim());
+            });
+            values = [...new Set([...knownAssignees, ...fromJobs])].filter(Boolean).sort();
+            selectedArr = landingSelectedAssignees;
+        } else {
+            listId = 'filterClientList';
+            let knownClients = [];
+            const wrapper = document.getElementById('clientName');
+            if (wrapper) {
+                const wp = wrapper.closest('.quick-pick-wrapper');
+                if (wp) {
+                    const qp = wp.querySelector('.quick-pick-menu');
+                    if (qp && qp.dataset.options) {
+                        try { knownClients = JSON.parse(qp.dataset.options); } catch(e) {}
+                    }
                 }
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (highlightedIndex > 0) {
-                    items.forEach(el => el.classList.remove('highlighted'));
-                    highlightedIndex--;
-                    items[highlightedIndex].classList.add('highlighted');
-                    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
-                }
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const highlighted = results.querySelector('.job-search-result.highlighted');
-                if (highlighted) {
-                    input.value = '';
-                    results.classList.remove('open');
-                    results.innerHTML = '';
-                    loadJob(highlighted.dataset.jobId);
-                }
-            } else if (e.key === 'Escape') {
-                results.classList.remove('open');
-                results.innerHTML = '';
-                highlightedIndex = -1;
             }
-        });
+            const fromJobs = jobs.map(j => (j.clientName || '').trim()).filter(Boolean);
+            values = [...new Set([...knownClients, ...fromJobs])].sort();
+            selectedArr = landingSelectedClients;
+        }
+        const list = document.getElementById(listId);
+        if (!list) return;
+        list.innerHTML = values.map(v => {
+            const checked = selectedArr.includes(v) ? ' checked' : '';
+            return '<label class="filter-dropdown-item"><input type="checkbox"' + checked + ' value="' + escHtml(v) + '"> ' + escHtml(v) + '</label>';
+        }).join('');
+    }
 
-        // Close results when clicking outside
-        document.addEventListener('click', e => {
-            if (!e.target.closest('.job-search-wrapper')) {
-                results.classList.remove('open');
-                highlightedIndex = -1;
-            }
+    function filterDropdownList(searchInput) {
+        const q = searchInput.value.toLowerCase();
+        const items = searchInput.closest('.filter-dropdown').querySelectorAll('.filter-dropdown-item');
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(q) ? '' : 'none';
+        });
+    }
+
+    function applyFilterDropdown(type) {
+        const listId = 'filter' + type + 'List';
+        const list = document.getElementById(listId);
+        if (!list) return;
+        const selected = [...list.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value);
+        if (type === 'CSR') landingSelectedCSRs = selected;
+        else if (type === 'Assignee') landingSelectedAssignees = selected;
+        else landingSelectedClients = selected;
+
+        const btn = document.getElementById('filter' + type + 'Btn');
+        const countBadge = document.getElementById('filter' + type + 'Count');
+        if (selected.length > 0) {
+            btn.classList.add('has-selection');
+            countBadge.style.display = '';
+            countBadge.textContent = selected.length;
+        } else {
+            btn.classList.remove('has-selection');
+            countBadge.style.display = 'none';
+        }
+        document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
+        landingCurrentPage = 1;
+        applyLandingFilters();
+    }
+
+    function clearFilterDropdown(type) {
+        const listId = 'filter' + type + 'List';
+        const list = document.getElementById(listId);
+        if (list) list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        applyFilterDropdown(type);
+    }
+
+    // ── View tabs rendering ──
+    function renderViewTabs(allJobs) {
+        const container = document.getElementById('viewTabs');
+        if (!container) return;
+        const me = getUserName();
+        const myCount = me ? allJobs.filter(j => isMyJob(j)).length : 0;
+        const allCount = allJobs.length;
+        const myActive = landingViewTab === 'my' ? ' active' : '';
+        const allActive = landingViewTab === 'all' ? ' active' : '';
+        container.innerHTML =
+            '<button class="view-tab' + myActive + '" onclick="setLandingViewTab(\'my\')">My Jobs <span class="tab-count">' + myCount + '</span></button>' +
+            '<button class="view-tab' + allActive + '" onclick="setLandingViewTab(\'all\')">All Jobs <span class="tab-count">' + allCount + '</span></button>';
+    }
+
+    // ── Job status helper ──
+    function getJobStatusLabel(job) {
+        if (!job.components || !job.components.length) return { label: 'New', cls: 'new' };
+        const reqStatus = getRequiredStatusForJob(job);
+        if (reqStatus.allComplete) return { label: 'Complete', cls: 'complete' };
+        const hasContent = job.components.some(c => {
+            return (c.instructions_prepress && c.instructions_prepress !== '<p><br></p>') ||
+                   (c.instructions_techservices && c.instructions_techservices !== '<p><br></p>') ||
+                   (c.checkboxes && Object.values(c.checkboxes).some(v => v === true));
+        });
+        if (hasContent) return { label: 'In progress', cls: 'in-progress' };
+        return { label: 'New', cls: 'new' };
+    }
+
+    // ── Dept dots helper ──
+    function getJobDeptDots(job) {
+        let prepressFilled = false, tsFilled = false;
+        if (job.components) {
+            job.components.forEach(c => {
+                if ((c.instructions_prepress && c.instructions_prepress !== '<p><br></p>') ||
+                    (c.checkboxes && Object.keys(c.checkboxes).some(k => k.startsWith('prepress_') && c.checkboxes[k]))) {
+                    prepressFilled = true;
+                }
+                if ((c.instructions_techservices && c.instructions_techservices !== '<p><br></p>') ||
+                    (c.checkboxes && Object.keys(c.checkboxes).some(k => k.startsWith('techservices_') && c.checkboxes[k]))) {
+                    tsFilled = true;
+                }
+            });
+        }
+        return '<div class="dept-dots">' +
+            '<div class="dept-dot' + (prepressFilled ? ' filled-prepress' : '') + '"></div>' +
+            '<div class="dept-dot' + (tsFilled ? ' filled-ts' : '') + '"></div>' +
+            '</div>';
+    }
+
+    // ── Assignee display helper ──
+    function getAssigneeDisplay(job) {
+        const assignee = job.assignedToPrepress || job.assignedToTechservices || '';
+        if (!assignee) return '--';
+        const parts = assignee.trim().split(/\s+/);
+        const initials = parts.map(p => p[0]).join('').toUpperCase().slice(0, 3);
+        return '<span class="assignee-avatar">' + escHtml(initials) + '</span>' + escHtml(assignee);
+    }
+
+    // ── Format modified date ──
+    function formatModifiedDate(dateStr) {
+        if (!dateStr) return '--';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '--';
+        const now = new Date();
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let hours = d.getHours();
+        const ampm = hours >= 12 ? 'p' : 'a';
+        hours = hours % 12 || 12;
+        const mins = d.getMinutes().toString().padStart(2, '0');
+        const timeStr = hours + ':' + mins + ampm;
+        if (d.toDateString() === now.toDateString()) return 'Today, ' + timeStr;
+        const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) return 'Yesterday, ' + timeStr;
+        return months[d.getMonth()] + ' ' + d.getDate() + ', ' + timeStr;
+    }
+
+    // ── Sort comparator ──
+    function getSortValue(job, col) {
+        switch (col) {
+            case 'jobNumber': return job.jobNumber || '';
+            case 'clientName': return (job.clientName || '').toLowerCase();
+            case 'jobDescription': return (job.jobDescription || '').toLowerCase();
+            case 'csrName': return (job.csrName || '').toLowerCase();
+            case 'assignee': return (job.assignedToPrepress || job.assignedToTechservices || '').toLowerCase();
+            case 'lastModified': return new Date(job.lastModified || job.dateCreated || 0).getTime();
+            case 'status': return getJobStatusLabel(job).label;
+            default: return '';
+        }
+    }
+
+    // ── Render the job table ──
+    function renderJobTable(jobs) {
+        const tbody = document.getElementById('jobTableBody');
+        if (!tbody) return;
+
+        document.querySelectorAll('.sort-arrow').forEach(el => {
+            el.classList.remove('active');
+            el.innerHTML = '';
+        });
+        const activeArrow = document.getElementById('sort-' + landingSortColumn);
+        if (activeArrow) {
+            activeArrow.classList.add('active');
+            activeArrow.innerHTML = landingSortDir === 'asc' ? '&#9652;' : '&#9662;';
+        }
+
+        if (jobs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="no-jobs-table-message">' +
+                (landingViewTab === 'my'
+                    ? 'No jobs assigned to you.<br><span style="font-size:11px;color:var(--ink-muted);">Jobs appear here when your name matches the Assigned To field.</span>'
+                    : 'No matching jobs') +
+                '</td></tr>';
+            document.getElementById('paginationControls').innerHTML = '';
+            return;
+        }
+
+        const me = getUserName().toLowerCase();
+        const rows = jobs.map(j => {
+            const mine = me && isMyJob(j) ? ' mine' : '';
+            const status = getJobStatusLabel(j);
+            const version = j.version ? ' <span class="version-badge">' + escHtml(j.version) + '</span>' : '';
+            const desc = j.jobDescription ? escHtml(j.jobDescription) : '';
+            const assigneeHtml = getAssigneeDisplay(j);
+            const deptDots = getJobDeptDots(j);
+            const modified = formatModifiedDate(j.lastModified || j.dateCreated);
+
+            return '<tr class="' + mine.trim() + '" onclick="loadJob(\'' + j.id + '\')">' +
+                '<td class="col-job">' + escHtml(j.jobNumber || '') + version + '</td>' +
+                '<td class="col-client">' + escHtml(j.clientName || '') + '</td>' +
+                '<td class="col-desc">' + desc + '</td>' +
+                '<td class="col-csr">' + escHtml(j.csrName || '') + '</td>' +
+                '<td class="col-assignee">' + assigneeHtml + '</td>' +
+                '<td class="col-modified">' + modified + '</td>' +
+                '<td class="col-status"><span class="status-badge ' + status.cls + '">' + status.label + '</span></td>' +
+                '<td>' + deptDots + '</td>' +
+                '</tr>';
+        }).join('');
+
+        tbody.innerHTML = rows;
+    }
+
+    // ── Pagination rendering ──
+    function renderPagination(totalItems) {
+        const container = document.getElementById('paginationControls');
+        if (!container) return;
+        if (totalItems === 0) { container.innerHTML = ''; return; }
+
+        const totalPages = Math.ceil(totalItems / landingPageSize);
+        if (landingCurrentPage > totalPages) landingCurrentPage = totalPages;
+        const start = (landingCurrentPage - 1) * landingPageSize + 1;
+        const end = Math.min(landingCurrentPage * landingPageSize, totalItems);
+
+        let pageButtons = '';
+        const prevDisabled = landingCurrentPage <= 1 ? ' disabled' : '';
+        const nextDisabled = landingCurrentPage >= totalPages ? ' disabled' : '';
+        pageButtons += '<button class="page-btn nav-arrow' + prevDisabled + '" onclick="setLandingPage(' + (landingCurrentPage - 1) + ')">&#8249;</button>';
+
+        let startPage = Math.max(1, landingCurrentPage - 3);
+        let endPage = Math.min(totalPages, startPage + 6);
+        if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
+
+        for (let p = startPage; p <= endPage; p++) {
+            const active = p === landingCurrentPage ? ' active' : '';
+            pageButtons += '<button class="page-btn' + active + '" onclick="setLandingPage(' + p + ')">' + p + '</button>';
+        }
+        pageButtons += '<button class="page-btn nav-arrow' + nextDisabled + '" onclick="setLandingPage(' + (landingCurrentPage + 1) + ')">&#8250;</button>';
+
+        container.innerHTML =
+            '<span class="pagination-info">Showing <strong>' + start + '-' + end + '</strong> of <strong>' + totalItems + '</strong> jobs</span>' +
+            '<div class="pagination-controls">' + pageButtons + '</div>' +
+            '<div class="per-page"><span>Show</span>' +
+            '<select onchange="setLandingPageSize(Number(this.value))">' +
+            '<option value="10"' + (landingPageSize === 10 ? ' selected' : '') + '>10</option>' +
+            '<option value="25"' + (landingPageSize === 25 ? ' selected' : '') + '>25</option>' +
+            '<option value="50"' + (landingPageSize === 50 ? ' selected' : '') + '>50</option>' +
+            '</select><span>per page</span></div>';
+    }
+
+    // ========== LANDING SEARCH (filters the job table) ==========
+    (function() {
+        const input = document.getElementById('landingSearchInput');
+        if (!input) return;
+        let debounceTimer;
+        input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                landingSearchQuery = input.value.trim().toLowerCase();
+                landingCurrentPage = 1;
+                applyLandingFilters();
+            }, 150);
         });
     })();
 
@@ -1903,33 +2141,37 @@
         }
         archive.sort((a, b) => new Date(b.archivedDate || b.lastModified || 0) - new Date(a.archivedDate || a.lastModified || 0));
 
-        const PAGE = 6;
+        const PAGE = 5;
         const showCount = archivedJobsExpanded ? archive.length : Math.min(archive.length, PAGE);
         const visible = archive.slice(0, showCount);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
         const items = visible.map(j => {
-            const desc = j.jobDescription ? ` - ${j.jobDescription}` : '';
-            const label = `${j.jobNumber} - ${j.clientName}${desc}`;
-            const archivedDate = j.archivedDate ? new Date(j.archivedDate).toLocaleDateString() : '';
-            return `<div class="archived-job-item" title="Archived ${archivedDate}">
-                <span class="archived-job-text">${escHtml(label)}</span>
-                <button class="archived-job-btn" onclick="unarchiveJob('${j.id}')">Restore</button>
-                <button class="archived-job-btn btn-archive-delete" onclick="deleteArchivedJob('${j.id}')" title="Delete permanently">&times;</button>
-            </div>`;
+            const desc = j.jobDescription ? ' - ' + j.jobDescription : '';
+            const label = j.jobNumber + ' - ' + j.clientName + desc;
+            const d = j.archivedDate ? new Date(j.archivedDate) : null;
+            const dateStr = d ? months[d.getMonth()] + ' ' + d.getDate() : '';
+            return '<div class="archive-item" title="Archived ' + (d ? d.toLocaleDateString() : '') + '">' +
+                '<span class="archive-item-text" onclick="unarchiveJob(\'' + j.id + '\')">' + escHtml(label) + '</span>' +
+                '<span class="archive-item-date">' + dateStr + '</span>' +
+                '<button class="mini-btn" onclick="unarchiveJob(\'' + j.id + '\')">Restore</button>' +
+                '<button class="mini-btn mini-delete" onclick="deleteArchivedJob(\'' + j.id + '\')" title="Delete permanently">&times;</button>' +
+                '</div>';
         }).join('');
 
         let footer = '';
-        const remaining = archive.length - showCount;
         if (!archivedJobsExpanded && archive.length > PAGE) {
-            footer = '<button class="archived-jobs-more" onclick="toggleArchivedExpanded()">+' + (archive.length - PAGE) + ' more</button>';
+            footer = '<button class="show-more-btn" onclick="toggleArchivedExpanded()">+' + (archive.length - PAGE) + ' more</button>';
         } else if (archivedJobsExpanded && archive.length > PAGE) {
-            footer = '<button class="archived-jobs-more" onclick="toggleArchivedExpanded()">Show less</button>';
+            footer = '<button class="show-more-btn" onclick="toggleArchivedExpanded()">Show less</button>';
         }
 
         container.innerHTML =
-            '<div class="archived-jobs-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:6px;"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>Archived (' + archive.length + ')</div>' +
-            '<div class="archived-jobs-list">' + items + '</div>' +
-            footer;
+            '<div class="bottom-section-header">' +
+            '<span class="bottom-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>Archived</span>' +
+            '<span class="bottom-count">' + archive.length + '</span>' +
+            '</div>' +
+            items + footer;
     }
 
     async function unarchiveJob(jobId) {
@@ -2029,16 +2271,22 @@
             container.innerHTML = '';
             return;
         }
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         const items = templates.map(t => {
-            const date = t.createdDate ? new Date(t.createdDate).toLocaleDateString() : '';
-            return '<div class="template-item" title="' + escHtml(t.componentName) + ' - Created ' + date + '">' +
-                '<span class="template-item-text">' + escHtml(t.name) + '</span>' +
-                '<button class="template-item-btn" onclick="deleteTemplate(\'' + t.id + '\')" title="Delete template">&times;</button>' +
+            const d = t.createdDate ? new Date(t.createdDate) : null;
+            const dateStr = d ? months[d.getMonth()] + ' ' + d.getDate() : '';
+            return '<div class="template-item-v2" title="' + escHtml(t.componentName) + ' - Created ' + (d ? d.toLocaleDateString() : '') + '">' +
+                '<span class="template-item-v2-text">' + escHtml(t.name) + '</span>' +
+                '<span class="template-item-v2-date">' + dateStr + '</span>' +
+                '<button class="mini-btn mini-delete" onclick="deleteTemplate(\'' + t.id + '\')" title="Delete template">&times;</button>' +
                 '</div>';
         }).join('');
         container.innerHTML =
-            '<div class="templates-col-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:6px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>Templates (' + templates.length + ')</div>' +
-            '<div class="templates-list">' + items + '</div>';
+            '<div class="bottom-section-header">' +
+            '<span class="bottom-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Templates</span>' +
+            '<span class="bottom-count">' + templates.length + '</span>' +
+            '</div>' +
+            items;
     }
 
     function populateTemplateDropdown(selectId) {
@@ -2171,7 +2419,7 @@
 
         localStorage.removeItem('prepressActiveJob');
         localStorage.removeItem('prepressActiveJobTime');
-        document.getElementById('noJobState').style.display = 'grid';
+        document.getElementById('noJobState').style.display = 'block';
         document.getElementById('printHeader').style.display = 'none';
         document.getElementById('sopContent').style.display = 'none';
         document.getElementById('masterCheckbox').disabled = true;
@@ -2182,10 +2430,10 @@
         updateLandingGreeting();
         renderArchivedJobs();
         renderTemplatesCol();
-        // Refresh the dropdown list without calling loadJobs (which would recurse back here)
+        // Refresh the landing page table
         const jobs = getActiveJobs();
         jobs.sort((a, b) => new Date(b.lastAccessed || b.lastModified || b.dateCreated) - new Date(a.lastAccessed || a.lastModified || a.dateCreated));
-        renderRecentJobs(jobs);
+        applyLandingFilters();
         const container = document.getElementById('jobListContainer');
         container.innerHTML = '';
         if (jobs.length === 0) {
@@ -4686,16 +4934,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
 
     // ========== AUTO-ACTIVATE TOGGLES ==========
     function populateCSRDropdowns() {
-        // CSR filter dropdown (landing page)
-        const filterCSR = document.getElementById('filterCSR');
-        if (filterCSR && filterCSR.options.length <= 1) {
-            CSR_NAMES.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
-                filterCSR.appendChild(opt);
-            });
-        }
+        // CSR filter is now a multi-select dropdown populated dynamically from job data
         // CSR quick-pick menus in create/edit modals (sync with CSR_NAMES)
         document.querySelectorAll('#csrName, #editCSRName').forEach(input => {
             const wrapper = input.closest('.quick-pick-wrapper');
@@ -5317,43 +5556,126 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         });
     }
 
-    // ========== LANDING PAGE FILTERS ==========
+    // ========== LANDING PAGE FILTERS (v2) ==========
     function applyLandingFilters() {
-        const csrFilter = document.getElementById('filterCSR').value; // exact name or ''
-        const clientFilter = (document.getElementById('filterClient').value || '').trim().toLowerCase();
-        const dateFrom = document.getElementById('filterDateFrom').value; // YYYY-MM-DD or ''
-        const dateTo = document.getElementById('filterDateTo').value;
+        const allJobs = getActiveJobs();
 
-        const jobs = getActiveJobs();
-        jobs.sort((a, b) => new Date(b.lastAccessed || b.lastModified || b.dateCreated) - new Date(a.lastAccessed || a.lastModified || a.dateCreated));
+        renderViewTabs(allJobs);
 
-        const hasFilters = csrFilter || clientFilter || dateFrom || dateTo;
+        const me = getUserName();
+        let filtered = (landingViewTab === 'my' && me) ? allJobs.filter(j => isMyJob(j)) : [...allJobs];
 
-        const filtered = jobs.filter(j => {
-            if (csrFilter) {
-                if ((j.csrName || '').trim() !== csrFilter) return false;
+        if (landingSearchQuery) {
+            filtered = filtered.filter(j => {
+                const searchable = (j.jobNumber + ' ' + j.clientName + ' ' + (j.jobDescription || '') + ' ' + (j.csrName || '') + ' ' + (j.assignedToPrepress || '') + ' ' + (j.assignedToTechservices || '')).toLowerCase();
+                return searchable.includes(landingSearchQuery);
+            });
+        }
+
+        if (landingDeptFilter === 'prepress') {
+            filtered = filtered.filter(j => {
+                if (!j.components || !j.components.length) return true;
+                return j.components.some(c =>
+                    (c.instructions_prepress && c.instructions_prepress !== '<p><br></p>') ||
+                    (c.checkboxes && Object.keys(c.checkboxes).some(k => k.startsWith('prepress_') && c.checkboxes[k]))
+                ) || (j.assignedToPrepress && j.assignedToPrepress.trim());
+            });
+        } else if (landingDeptFilter === 'techservices') {
+            filtered = filtered.filter(j => {
+                if (!j.components || !j.components.length) return true;
+                return j.components.some(c =>
+                    (c.instructions_techservices && c.instructions_techservices !== '<p><br></p>') ||
+                    (c.checkboxes && Object.keys(c.checkboxes).some(k => k.startsWith('techservices_') && c.checkboxes[k]))
+                ) || (j.assignedToTechservices && j.assignedToTechservices.trim());
+            });
+        }
+
+        if (landingSelectedCSRs.length > 0) {
+            filtered = filtered.filter(j => landingSelectedCSRs.includes((j.csrName || '').trim()));
+        }
+
+        if (landingSelectedAssignees.length > 0) {
+            filtered = filtered.filter(j => {
+                return landingSelectedAssignees.includes((j.assignedToPrepress || '').trim()) ||
+                       landingSelectedAssignees.includes((j.assignedToTechservices || '').trim());
+            });
+        }
+
+        if (landingSelectedClients.length > 0) {
+            filtered = filtered.filter(j => landingSelectedClients.includes((j.clientName || '').trim()));
+        }
+
+        if (landingTimeFilter !== 'all') {
+            const now = new Date();
+            let cutoff;
+            if (landingTimeFilter === 'today') {
+                cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            } else if (landingTimeFilter === 'week') {
+                cutoff = new Date(now); cutoff.setDate(now.getDate() - 7);
+            } else if (landingTimeFilter === 'month') {
+                cutoff = new Date(now); cutoff.setMonth(now.getMonth() - 1);
             }
-            if (clientFilter) {
-                if (!(j.clientName || '').toLowerCase().includes(clientFilter)) return false;
+            if (cutoff) {
+                filtered = filtered.filter(j => {
+                    const d = new Date(j.lastModified || j.dateCreated || 0);
+                    return d >= cutoff;
+                });
             }
-            const jobDate = (j.dateCreated || '').slice(0, 10);
-            if (dateFrom && jobDate < dateFrom) return false;
-            if (dateTo && jobDate > dateTo) return false;
-            return true;
+        }
+
+        filtered.sort((a, b) => {
+            let va = getSortValue(a, landingSortColumn);
+            let vb = getSortValue(b, landingSortColumn);
+            if (typeof va === 'number' && typeof vb === 'number') {
+                return landingSortDir === 'asc' ? va - vb : vb - va;
+            }
+            va = String(va); vb = String(vb);
+            const cmp = va.localeCompare(vb, undefined, { numeric: true });
+            return landingSortDir === 'asc' ? cmp : -cmp;
         });
 
-        renderRecentJobs(filtered, hasFilters);
-        const countEl = document.getElementById('filterResultCount');
-        if (countEl) {
-            countEl.textContent = hasFilters ? filtered.length + ' of ' + jobs.length : '';
-        }
+        const totalFiltered = filtered.length;
+        const pageStart = (landingCurrentPage - 1) * landingPageSize;
+        const pageSlice = filtered.slice(pageStart, pageStart + landingPageSize);
+
+        renderJobTable(pageSlice);
+        renderPagination(totalFiltered);
+        updateClearFiltersButton();
+    }
+
+    function updateClearFiltersButton() {
+        const hasFilters = landingSearchQuery ||
+            landingDeptFilter !== 'all' ||
+            landingTimeFilter !== 'all' ||
+            landingSelectedCSRs.length > 0 ||
+            landingSelectedAssignees.length > 0 ||
+            landingSelectedClients.length > 0;
+        const btn = document.getElementById('clearFiltersBtn');
+        if (btn) btn.style.display = hasFilters ? '' : 'none';
     }
 
     function clearLandingFilters() {
-        document.getElementById('filterCSR').value = '';
-        document.getElementById('filterClient').value = '';
-        document.getElementById('filterDateFrom').value = '';
-        document.getElementById('filterDateTo').value = '';
+        landingSelectedCSRs = [];
+        landingSelectedAssignees = [];
+        landingSelectedClients = [];
+        landingDeptFilter = 'all';
+        landingTimeFilter = 'all';
+        landingSearchQuery = '';
+        landingCurrentPage = 1;
+        const searchInput = document.getElementById('landingSearchInput');
+        if (searchInput) searchInput.value = '';
+        document.querySelectorAll('#filterBar .filter-pill[data-dept]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.dept === 'all');
+        });
+        document.querySelectorAll('#filterBar .filter-pill[data-time]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.time === 'all');
+        });
+        ['CSR', 'Assignee', 'Client'].forEach(type => {
+            const btn = document.getElementById('filter' + type + 'Btn');
+            if (btn) btn.classList.remove('has-selection');
+            const badge = document.getElementById('filter' + type + 'Count');
+            if (badge) badge.style.display = 'none';
+        });
         applyLandingFilters();
     }
 
