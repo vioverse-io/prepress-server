@@ -22,7 +22,7 @@ window.DEPT_REGISTRY.techservices = {
     ],
 
     // Dropdown option sets.
-    DEDUP_METHODS: ["Individual (Full Name + Address)", "Household (Last Name + Address)", "Residential (Address only)"],
+    DEDUP_METHODS: ["Individual (Full Name + Address)", "Household (Last Name + Address)", "Merge Households (Last Name + Address)", "Residential (Address only)"],
     CASING_OPTIONS: ["Upper/Lower, Punctuation", "Upper/Lower, No Punctuation", "All Upper, Punctuation", "All Upper, No Punctuation"],
 
     // Required fields (first pass — Jason may add more; see TBD T1)
@@ -65,7 +65,7 @@ window.DEPT_REGISTRY.techservices = {
             { cbId: 'ts_sp41', noteId: 'ts_sp41n', label: 'File priorities' },
             { cbId: 'ts_sp40', noteId: 'ts_sp40n', label: 'Suppression file match' },
             { cbId: 'ts_sp42', noteId: 'ts_sp42n', label: 'Rollup/Table' },
-            { cbId: 'ts_cb50a', noteId: 'ts_cb50a_n', label: 'Matching - #-Way' },
+            { cbId: 'ts_cb50a', noteId: 'ts_cb50a_n', label: 'Match job' },
             { cbId: 'ts_cb50b', noteId: 'ts_cb50b_n', label: 'Match/Append' },
             { cbId: 'ts_sp51', noteId: 'ts_sp51n', label: 'Casing' }
         ]},
@@ -202,7 +202,10 @@ window.DEPT_REGISTRY.techservices = {
 
         // ─── Other (Matching / Casing) ──────────────────
         const otherClauses = [];
-        if (chk('ts_cb50a')) otherClauses.push('matching (#-way)');
+        if (chk('ts_cb50a')) {
+            const matchVal = (notes['ts_cb50a_n'] || '').trim();
+            otherClauses.push(matchVal ? matchVal + ' match job' : 'match job');
+        }
         if (chk('ts_cb50b')) otherClauses.push('match/append');
         const casingVal = val('ts_sp51', 'ts_sp51n');
         if (casingVal) otherClauses.push('casing: ' + casingVal);

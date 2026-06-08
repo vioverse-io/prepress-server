@@ -1112,7 +1112,7 @@
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp30"><span class="toggle-track"></span></label>
             <span class="field-label">Deduplication method</span>
-            <div class="field-input field-input--pick"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_sp30n" placeholder="select one" readonly><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Individual (Full Name + Address)","Household (Last Name + Address)","Residential (Address only)"]'></div></div></div>
+            <div class="field-input field-input--pick"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_sp30n" placeholder="select one" readonly><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Individual (Full Name + Address)","Household (Last Name + Address)","Merge Households (Last Name + Address)","Residential (Address only)"]'></div></div></div>
           </div>
 
           <div class="field-row">
@@ -1137,10 +1137,10 @@
 
           <div class="field-subgroup-header">Other</div>
           <div class="field-row-pair field-indent-1">
-            <div class="field-row field-row--cb-only">
+            <div class="field-row">
               <label class="toggle-switch"><input type="checkbox" data-id="ts_cb50a"><span class="toggle-track"></span></label>
-              <span class="field-label">Matching - #-Way</span>
-              <div class="field-input"></div>
+              <span class="field-label" style="min-width:auto;">Match job</span>
+              <div class="field-input" style="flex:none;width:140px;"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_cb50a_n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["2-way", "3-way"]'></div></div></div>
             </div>
             <div class="field-row field-row--cb-only">
               <label class="toggle-switch"><input type="checkbox" data-id="ts_cb50b"><span class="toggle-track"></span></label>
