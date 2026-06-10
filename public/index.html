@@ -1246,18 +1246,21 @@
 
       <section class="help-section">
         <h3>Landing Page</h3>
+        <p>A sortable, filterable table of all your jobs. Columns: Job#, Client, Project, CSR, Assigned, Modified, Status, Depts.</p>
         <ul>
-          <li><strong>+</strong> creates a new work order.</li>
-          <li>Click any card to open it.</li>
-          <li>Search by job number or client name.</li>
-          <li>Filter by CSR, client, or date range.</li>
+          <li><strong>New Work Order</strong> creates a job.</li>
+          <li>Click any row to open it.</li>
+          <li><strong>Search</strong> filters across job number, client, CSR, and project.</li>
+          <li><strong>Filters</strong> -- narrow by department, CSR, assignee, client, or time range (Today / This Week / This Month).</li>
+          <li><strong>My Jobs / All Jobs</strong> tabs -- "My Jobs" shows only jobs assigned to you.</li>
+          <li>Click any column header to sort.</li>
         </ul>
-        <p>Archived jobs and saved Templates also appear here.</p>
+        <p>Archived jobs and saved templates appear below the table.</p>
       </section>
 
       <section class="help-section">
         <h3>Creating a Job</h3>
-        <p>Click <strong>+</strong> and fill in Job Number, Client, CSR, and which components the job has (Letter, Envelope, etc.). If you skip components, a default "Main" is created.</p>
+        <p>Click <strong>New Work Order</strong> and fill in Job Number, Client, CSR, and which components the job has (Letter, Envelope, etc.). If you skip components, a default "Main" is created.</p>
       </section>
 
       <section class="help-section">
@@ -1269,31 +1272,31 @@
         <h4>Department Tabs</h4>
         <p>Two tabs above the checklist: <strong>Prepress</strong> and <strong>Tech Services</strong>. Click a tab to switch. Each department has its own checklist fields and its own instructions editor. They save independently.</p>
 
-        <h4>Left Sidebar &mdash; Instructions</h4>
-        <p>Rich text editor for instructions. Content is per-department: switching tabs switches the editor too.</p>
+        <h4>Left Sidebar -- Instructions</h4>
+        <p>Rich text editor for free-form instructions. Content is per-department: switching tabs switches the editor too.</p>
         <ul>
           <li><strong>Generate</strong> reads your checklist fields and writes a formatted summary. If fields change after generating, printing warns you it may be stale.</li>
           <li><strong>Revisions</strong> are saved when you close a job. Click any past entry in the timeline to view it.</li>
         </ul>
         <p>The sidebar is resizable. Drag the handle between the sidebar and checklist.</p>
 
-        <h4>Right Panel &mdash; Prepress Checklist</h4>
+        <h4>Right Panel -- Prepress Checklist</h4>
         <p>Three sections:</p>
         <ul>
-          <li><strong>Piece Specs</strong> &mdash; Flat Size, Finished Size, Presswork, Press, Press Sheet, Print Marks, Number Up, Indicia, Head Info, Binding, Special Color, Previous Job#</li>
-          <li><strong>File Path</strong> &mdash; Artwork, Mockup, SOF, Seeds &amp; Samp, Lives, Record Counts, Other</li>
-          <li><strong>Variable Print</strong> &mdash; Address Block, 2D (camera), 2D (inserter), Match Job</li>
+          <li><strong>Piece Specs</strong> -- Flat Size, Finished Size, Presswork, Press, Press Sheet, Print Marks, Number Up, Indicia, Head Info, Binding, Special Color, Previous Job#</li>
+          <li><strong>File Path</strong> -- Artwork, Mockup, SOF, Seeds &amp; Samp, Lives, Record Counts, Other</li>
+          <li><strong>Variable Print</strong> -- Address Block, 2D (camera), 2D (inserter), Match Job</li>
         </ul>
         <p>Each row has a toggle and a text field. Many fields have dropdown presets (click the arrow). Required fields show a red dot when empty. Flat Size and Press options switch automatically for envelope components.</p>
 
-        <h4>Right Panel &mdash; Tech Services Checklist</h4>
+        <h4>Right Panel -- Tech Services Checklist</h4>
         <p>Five sections:</p>
         <ul>
-          <li><strong>Data Conversion</strong> &mdash; file locations, mailstreams, splitting, addressing fields</li>
-          <li><strong>NCOA / CASS</strong> &mdash; address standardization, move updates, deceased suppression</li>
-          <li><strong>Deduplication</strong> &mdash; method, file priorities, suppression match, rollup</li>
-          <li><strong>Presort</strong> &mdash; placeholder (pending finalization)</li>
-          <li><strong>Print</strong> &mdash; meeting required, variables, letter versions, signoffs, samples</li>
+          <li><strong>Data Conversion</strong> -- file locations, mailstreams, splitting, addressing fields</li>
+          <li><strong>NCOA / CASS</strong> -- address standardization, move updates, movers handling, deceased suppression</li>
+          <li><strong>Deduplication</strong> -- method (Individual / Household / Merge Households / Residential), file priorities, suppression match, rollup, casing</li>
+          <li><strong>Presort</strong> -- data processing fields (pending finalization)</li>
+          <li><strong>Print</strong> -- meeting required, variables, letter versions, signoffs, samples</li>
         </ul>
         <p>Same toggle + text pattern as Prepress. "Data file locations" is the only required field for now.</p>
       </section>
@@ -1313,25 +1316,26 @@
       <section class="help-section">
         <h3>Nav Bar</h3>
         <table class="help-table">
-          <tr><td><strong>Home</strong></td><td>Back to landing</td></tr>
+          <tr><td><strong>Home</strong></td><td>Back to landing page</td></tr>
           <tr><td><strong>+</strong></td><td>New work order</td></tr>
-          <tr><td><strong>Printer</strong></td><td>Print current, all components, or all as one PDF</td></tr>
+          <tr><td><strong>Print</strong></td><td>Print current, all components, or all as one PDF</td></tr>
           <tr><td><strong>Undo / Redo</strong></td><td>Ctrl+Z / Ctrl+Y</td></tr>
-          <tr><td><strong>...</strong></td><td>Edit Job, Duplicate, Templates, Reset, Delete, Import/Export, Backup, Text Size</td></tr>
+          <tr><td><strong>... (More)</strong></td><td>Edit Job, Duplicate Job/Component, Templates, Archive, Reset, Delete, Import/Export, Restore Backup, Text Size</td></tr>
           <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
-          <tr><td><strong>Book icon</strong></td><td>This guide</td></tr>
-          <tr><td><strong>Moon/Sun</strong></td><td>Dark mode toggle</td></tr>
-          <tr><td><strong>Search</strong></td><td>Highlights matching fields, auto-expands collapsed sections</td></tr>
+          <tr><td><strong>Book</strong></td><td>This guide</td></tr>
+          <tr><td><strong>Moon / Sun</strong></td><td>Dark mode toggle</td></tr>
+          <tr><td><strong>Search</strong></td><td>Highlights matching checklist fields, auto-expands collapsed sections</td></tr>
+          <tr><td><strong>Profile</strong></td><td>Set your nickname and photo (top right circle)</td></tr>
         </table>
       </section>
 
       <section class="help-section">
         <h3>Printing</h3>
-        <p>Three options:</p>
+        <p>Three options in the print dropdown:</p>
         <ul>
-          <li><strong>Print Current</strong> &mdash; active component only.</li>
-          <li><strong>Print All Components</strong> &mdash; each component as a separate page.</li>
-          <li><strong>Print All as One PDF</strong> &mdash; all components combined into one document.</li>
+          <li><strong>Print Current</strong> -- active component only.</li>
+          <li><strong>Print All Components</strong> -- each component on a separate page.</li>
+          <li><strong>Print All as One PDF</strong> -- all components combined into one document.</li>
         </ul>
         <p>Output uses the active department's color (red for Prepress, blue for Tech Services) and only shows that department's instructions and fields. The app warns if required fields are empty or the generated summary is out of date.</p>
       </section>
@@ -1344,16 +1348,16 @@
       <section class="help-section">
         <h3>Duplicating</h3>
         <ul>
-          <li><strong>Duplicate Job</strong> &mdash; copies everything. Clears instructions, file paths, and variable print so you start fresh on those.</li>
-          <li><strong>Duplicate Component</strong> &mdash; copies within the same job. Same clearing rules.</li>
+          <li><strong>Duplicate Job</strong> -- copies everything. Clears instructions, file paths, and variable print so you start fresh on those.</li>
+          <li><strong>Duplicate Component</strong> -- copies within the same job. Same clearing rules.</li>
         </ul>
       </section>
 
       <section class="help-section">
         <h3>Import / Export</h3>
         <ul>
-          <li><strong>Export</strong> &mdash; pick jobs, downloads a .json file.</li>
-          <li><strong>Import</strong> &mdash; load a .json file. Shows a preview and flags duplicates.</li>
+          <li><strong>Export</strong> -- pick which jobs to export, downloads a .json file.</li>
+          <li><strong>Import</strong> -- load a .json file. Shows a preview with new/updated/duplicate status for each job.</li>
         </ul>
       </section>
 
@@ -1363,28 +1367,19 @@
       </section>
 
       <section class="help-section">
-        <h3>Profile</h3>
-        <p>Click the profile circle (top right) to set a nickname and photo. Your name appears on timestamps and triggers greetings on the landing page.</p>
-      </section>
-
-      <section class="help-section">
         <h3>Admin Password</h3>
         <p>Deleting a job or template requires an admin password to prevent accidents.</p>
       </section>
 
-      <!-- TODO: Add "Shared Editing" tutorial section when internal server goes live.
-           Covers: lock banner ("X is editing this job"), View Read-Only vs Edit Anyway,
-           heartbeat/auto-expire behavior, what happens on tab close. -->
-
       <section class="help-section">
-        <h3>Server Version (Coming Soon)</h3>
-        <p>A server-backed version is in progress. It will run on the company network and let multiple people view and edit jobs at the same time. Data will live on a shared SQL Server database instead of in the browser. The interface stays the same.</p>
+        <h3>Server Version</h3>
+        <p>A server-backed version runs on the company network so multiple people can view and edit jobs at the same time. Data lives on a shared SQL Server database instead of in the browser. The interface is the same. To migrate your existing jobs, export them here and import into the server version.</p>
       </section>
 
       <section class="help-section help-section-limits">
         <h3>Limits</h3>
         <ul>
-          <li>20 active jobs (archive old ones to make room)</li>
+          <li>50 active jobs (archive old ones to make room)</li>
           <li>10 components per job</li>
           <li>15 undo steps</li>
         </ul>
