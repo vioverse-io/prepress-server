@@ -1,22 +1,37 @@
 const useWindowsAuth = (process.env.SQL_AUTH || '').toLowerCase() === 'windows';
 const sql = useWindowsAuth ? require('mssql/msnodesqlv8') : require('mssql');
 
-const config = {
-    server: process.env.SQL_SERVER,
-    port: parseInt(process.env.SQL_PORT || '1433', 10),
-    database: process.env.SQL_DATABASE,
-    ...(!useWindowsAuth && { user: process.env.SQL_USER, password: process.env.SQL_PASSWORD }),
-    options: {
-        encrypt: process.env.SQL_ENCRYPT === 'true',
-        trustServerCertificate: process.env.SQL_TRUST_SERVER_CERT !== 'false',
-        ...(useWindowsAuth && { trustedConnection: true })
-    },
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
+function buildConfig() {
+    if (useWindowsAuth) {
+        const driver = process.env.SQL_ODBC_DRIVER || 'ODBC Driver 18 for SQL Server';
+        const server = process.env.SQL_SERVER;
+        const port = process.env.SQL_PORT || '';
+        const database = process.env.SQL_DATABASE;
+        const encrypt = process.env.SQL_ENCRYPT === 'true' ? 'Yes' : 'No';
+        const trustCert = process.env.SQL_TRUST_SERVER_CERT !== 'false' ? 'Yes' : 'No';
+        // Named instances (e.g. localhost\SQLEXPRESS) use dynamic ports via
+        // SQL Server Browser -- don't append a port. Only append port when
+        // connecting to a default instance by IP/hostname.
+        const serverPart = (server.includes('\\') || !port) ? server : `${server},${port}`;
+        return {
+            connectionString: `Driver={${driver}};Server=${serverPart};Database=${database};Trusted_Connection=Yes;Encrypt=${encrypt};TrustServerCertificate=${trustCert};`,
+            pool: { max: 10, min: 0, idleTimeoutMillis: 30000 }
+        };
     }
-};
+    return {
+        server: process.env.SQL_SERVER,
+        port: parseInt(process.env.SQL_PORT || '1433', 10),
+        database: process.env.SQL_DATABASE,
+        user: process.env.SQL_USER,
+        password: process.env.SQL_PASSWORD,
+        options: {
+            encrypt: process.env.SQL_ENCRYPT === 'true',
+            trustServerCertificate: process.env.SQL_TRUST_SERVER_CERT !== 'false'
+        },
+        pool: { max: 10, min: 0, idleTimeoutMillis: 30000 }
+    };
+}
+const config = buildConfig();
 
 let pool = null;
 

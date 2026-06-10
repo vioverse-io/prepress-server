@@ -1,7 +1,7 @@
 {
   "name": "prepress-wo-sql",
   "version": "1.0.0",
-  "description": "Prepress Work Order App - SQL Server backend",
+  "description": "STS Work Order - SQL Server backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

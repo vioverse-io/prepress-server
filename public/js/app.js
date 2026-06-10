@@ -4675,7 +4675,7 @@ ${sectionsHTML}
     function printHelpGuide() {
         const body = document.querySelector('.help-body');
         if (!body) return;
-        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order Instructions - User Guide</title><style>
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>STS Work Order - User Guide</title><style>
 body{font-family:'DM Sans',system-ui,sans-serif;font-size:13px;line-height:1.6;color:#1a1a2e;max-width:640px;margin:0 auto;padding:32px 24px;}
 h1{font-family:Georgia,serif;font-size:20px;font-weight:700;margin-bottom:24px;border-bottom:2px solid #d8d5cf;padding-bottom:8px;}
 h3{font-family:Georgia,serif;font-size:15px;font-weight:700;margin:20px 0 6px;}
@@ -4689,7 +4689,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
 .limits{background:#edecea;border-radius:8px;padding:12px 16px;margin-top:16px;}
 .limits h3{margin-top:0;}
 .limits ul{margin-bottom:0;}
-</style></head><body><h1>Work Order Instructions &mdash; User Guide</h1>${body.innerHTML}</body></html>`;
+</style></head><body><h1>STS Work Order &mdash; User Guide</h1>${body.innerHTML}</body></html>`;
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed;left:-9999px;width:0;height:0;';
         document.body.appendChild(iframe);
