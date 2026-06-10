@@ -2,60 +2,28 @@
 
 Node + MS SQL Server web app. Multi-user, LAN-accessible. Built and supported in-house by David Marra.
 
-## Stack
+## What you need
 
 - Node.js 18+ on the app server
-- MS SQL Server (TCP/IP enabled, port 1433). Windows Authentication.
-- App listens on a port chosen by IT (set in `.env`)
+- MS SQL Server with TCP/IP enabled (port 1433)
+- ODBC Driver for SQL Server (17 or 18) on the app server
+- SSMS or another way to run SQL scripts
 
-## Deploy
+## Deploy (follow in order)
 
-1. Drop the app folder on the server. Suggested: `C:\Apps\prepress-wo-sql`. Avoid `C:\Program Files` (UAC interferes with `.env` reads).
+### 1. Drop the app folder on the server
 
-2. In SSMS, execute `sql\create-database.sql` to create the `PrepressWO` database. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `PrepressWO`. Then switch to that database and execute `sql\create-tables.sql`.
+Suggested location: `C:\Apps\prepress-wo-sql`. Avoid `C:\Program Files` (UAC interferes with `.env` reads).
 
-3. Copy `.env.example` to `.env` and fill in real values:
+### 2. Create the database
 
-   ```
-   SQL_SERVER=<sql-host-or-ip>
-   SQL_PORT=1433
-   SQL_DATABASE=PrepressWO
-   SQL_AUTH=windows
-   SQL_ENCRYPT=false
-   SQL_TRUST_SERVER_CERT=true
-   SQL_ODBC_DRIVER=ODBC Driver 18 for SQL Server
-   PORT=<port>
-   ```
+In SSMS, execute `sql\create-database.sql` to create the `PrepressWO` database. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `PrepressWO`. Then switch to that database and execute `sql\create-tables.sql`.
 
-   **SQL_SERVER:** For a default SQL Server instance, use the hostname or IP (e.g. `192.168.1.50`). For a named instance (e.g. SQL Express), use `hostname\INSTANCENAME` -- the port will be resolved automatically via SQL Server Browser.
+### 3. Check the ODBC driver
 
-   **SQL_ODBC_DRIVER:** Must match the ODBC driver installed on the app server. See "Checking the ODBC driver" below.
+The app connects to SQL Server using Windows Authentication through the ODBC driver. You need to know the exact driver name installed on the app server.
 
-4. `npm install` in the app folder.
-
-5. `node server.js` to start. From the app server itself, verify with `http://localhost:<port>/api/health` -- should return `{"connected": true}`. (Localhost is only for this on-server check; user traffic uses the LAN URL below.)
-
-6. Open inbound TCP `<port>` on the app server firewall.
-
-7. Users access the app at `http://<app-server-hostname-or-ip>:<port>` from any LAN machine. The landing page shows a sortable, filterable job table with My Jobs / All Jobs tabs and search.
-
-8. Install as a Windows service via NSSM. Path: `node.exe`, Arguments: `server.js`, Startup directory: app folder. **Log On:** set the service to run as the Windows account that was granted SQL access in step 2 (not LocalSystem).
-
-## Notes
-
-- **Data** lives in SQL Server. No app-side backups needed; covered by existing SQL Server DBA process.
-- **Updates:** stop the service, replace files (keep `.env`), run `npm install` if `package.json` changed, restart.
-- **Contact:** David Marra
-
-## ODBC Driver
-
-The app uses Windows Authentication via the `msnodesqlv8` native driver, which requires the [Microsoft ODBC Driver for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) on the app server.
-
-Machines running SQL Server typically have it already. If the app server is separate, install ODBC Driver 17 or 18 before running `npm install`.
-
-### Checking the ODBC driver
-
-Open `odbcad32` on the app server and look under the **Drivers** tab. The exact name listed there (e.g. `ODBC Driver 18 for SQL Server`) is what goes in `.env` as `SQL_ODBC_DRIVER`.
+Open `odbcad32` on the app server and look under the **Drivers** tab. Write down the exact name -- it will be something like `ODBC Driver 18 for SQL Server`.
 
 PowerShell alternative:
 
@@ -63,21 +31,77 @@ PowerShell alternative:
 Get-OdbcDriver | Where-Object Name -like '*SQL Server*' | Select-Object Name
 ```
 
+If no ODBC Driver for SQL Server is listed, install it from [Microsoft's download page](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) before continuing. Machines running SQL Server typically have it already.
+
+### 4. Create the `.env` file
+
+Copy `.env.example` to `.env` and fill in real values:
+
+```
+SQL_SERVER=<sql-host-or-ip>
+SQL_PORT=1433
+SQL_DATABASE=PrepressWO
+SQL_AUTH=windows
+SQL_ENCRYPT=false
+SQL_TRUST_SERVER_CERT=true
+SQL_ODBC_DRIVER=ODBC Driver 18 for SQL Server
+PORT=<port>
+```
+
+- **SQL_SERVER:** Use the hostname or IP of the SQL Server (e.g. `192.168.1.50`). For a named instance (e.g. SQL Express), use `hostname\INSTANCENAME` and leave `SQL_PORT` blank.
+- **SQL_ODBC_DRIVER:** Use the exact driver name from step 3.
+- **PORT:** The port the web app will listen on (e.g. `3000`).
+
+### 5. Install dependencies
+
+Run `npm install` in the app folder.
+
+### 6. Start and verify
+
+Run `node server.js`. From the app server itself, open:
+
+```
+http://localhost:<port>/api/health
+```
+
+You should see `{"connected": true}`. If not, see **Troubleshooting** below.
+
+### 7. Open the firewall
+
+Open inbound TCP for the port you chose (the `PORT` value from `.env`) on the app server firewall.
+
+### 8. Test from another machine
+
+From any LAN machine, open `http://<app-server-hostname-or-ip>:<port>`. You should see the landing page with a job table.
+
+### 9. Install as a Windows service
+
+Use NSSM to install as a service:
+- **Path:** `node.exe`
+- **Arguments:** `server.js`
+- **Startup directory:** app folder
+- **Log On:** set the service to run as the Windows account that was granted SQL access in step 2 (not LocalSystem)
+
+## Updating
+
+Stop the service, replace files (keep `.env`), run `npm install` if `package.json` changed, restart.
+
 ## Troubleshooting
 
-### `/api/health` returns `connected: false`
-
 **"Data source name not found, no default driver specified"**
-The `SQL_ODBC_DRIVER` value in `.env` does not match any installed ODBC driver. Check the installed driver name (see above) and update `.env` to match exactly.
+`SQL_ODBC_DRIVER` in `.env` does not match any installed driver. Go back to step 3 and check the exact name.
 
-**"TCP Provider: No connection could be made because the target machine actively refused it"**
-- Verify SQL Server is running and TCP/IP is enabled (SQL Server Configuration Manager > Protocols).
-- Verify `SQL_SERVER` and `SQL_PORT` in `.env` are correct.
-- For named instances (e.g. SQL Express), set `SQL_SERVER=hostname\INSTANCENAME` and leave `SQL_PORT` blank. Make sure the SQL Server Browser service is running.
+**"TCP Provider: target machine actively refused it"**
+- SQL Server may not be running, or TCP/IP is not enabled (check SQL Server Configuration Manager > Protocols).
+- `SQL_SERVER` or `SQL_PORT` in `.env` may be wrong.
+- For named instances (SQL Express), use `hostname\INSTANCENAME` as `SQL_SERVER` and leave `SQL_PORT` blank. The SQL Server Browser service must be running.
 
 **"Login failed"**
-The Windows account running the Node process does not have access to the `PrepressWO` database. Grant `db_datareader` + `db_datawriter` in SSMS.
+The Windows account running the Node process does not have access to `PrepressWO`. Grant `db_datareader` + `db_datawriter` in SSMS.
 
-### Jobs created in browser but `/api/jobs` returns empty
+**Jobs show in browser but `/api/jobs` returns empty**
+The browser is using localStorage instead of the SQL API. This means the frontend files are from the M: drive version instead of server-sql. Replace `public/js/app.js` with the server-sql version and restart.
 
-The browser is using the localStorage data layer instead of the SQL API. This means the frontend files are from the wrong version (M: drive instead of server-sql). Replace `public/js/app.js` with the server-sql version and restart.
+## Contact
+
+David Marra
