@@ -17,7 +17,12 @@ Suggested location: `C:\Apps\prepress-wo-sql`. Avoid `C:\Program Files` (UAC int
 
 ### 2. Create the database
 
-In SSMS, execute `sql\create-database.sql` to create the `PrepressWO` database. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `PrepressWO`. Then switch to that database and execute `sql\create-tables.sql`.
+In SSMS:
+
+1. Open and run `sql\create-database.sql`. This creates the `PrepressWO` database.
+2. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `PrepressWO`.
+3. Make sure `PrepressWO` is selected as the active database (not `master`).
+4. Open and run `sql\create-tables.sql`.
 
 ### 3. Check the ODBC driver
 
@@ -76,7 +81,7 @@ From any LAN machine, open `http://<app-server-hostname-or-ip>:<port>`. You shou
 
 ### 9. Install as a Windows service
 
-Use NSSM to install as a service:
+Use [NSSM](https://nssm.cc/) (the Non-Sucking Service Manager) to install as a Windows service:
 - **Path:** `node.exe`
 - **Arguments:** `server.js`
 - **Startup directory:** app folder
