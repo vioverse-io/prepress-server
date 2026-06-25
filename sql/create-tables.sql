@@ -1,6 +1,6 @@
--- Run this against the PrepressWO database after create-database.sql.
+-- Run this against the STS_WorkOrder database after create-database.sql.
 
-USE PrepressWO;
+USE STS_WorkOrder;
 GO
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'jobs')

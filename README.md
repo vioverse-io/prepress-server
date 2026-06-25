@@ -19,9 +19,9 @@ Suggested location: `C:\Apps\prepress-wo-sql`. Avoid `C:\Program Files` (UAC int
 
 In SSMS:
 
-1. Open and run `sql\create-database.sql`. This creates the `PrepressWO` database.
-2. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `PrepressWO`.
-3. Make sure `PrepressWO` is selected as the active database (not `master`).
+1. Open and run `sql\create-database.sql`. This creates the `STS_WorkOrder` database.
+2. Grant the Windows account that will run the Node service `db_datareader` + `db_datawriter` on `STS_WorkOrder`.
+3. Make sure `STS_WorkOrder` is selected as the active database (not `master`).
 4. Open and run `sql\create-tables.sql`.
 
 ### 3. Check the ODBC driver
@@ -45,16 +45,18 @@ Copy `.env.example` to `.env` and fill in real values:
 ```
 SQL_SERVER=<sql-host-or-ip>
 SQL_PORT=1433
-SQL_DATABASE=PrepressWO
+SQL_DATABASE=STS_WorkOrder
 SQL_AUTH=windows
 SQL_ENCRYPT=false
 SQL_TRUST_SERVER_CERT=true
 SQL_ODBC_DRIVER=ODBC Driver 18 for SQL Server
+NTLM_AUTH=true
 PORT=<port>
 ```
 
 - **SQL_SERVER:** Use the hostname or IP of the SQL Server (e.g. `192.168.1.50`). For a named instance (e.g. SQL Express), use `hostname\INSTANCENAME` and leave `SQL_PORT` blank.
 - **SQL_ODBC_DRIVER:** Use the exact driver name from step 3.
+- **NTLM_AUTH:** Set to `true` to auto-detect Windows login names. Users cannot type an arbitrary name -- the profile shows their Windows username. Set to `false` or omit for dev environments without a domain controller.
 - **PORT:** The port the web app will listen on (e.g. `3000`).
 
 ### 5. Install dependencies
@@ -102,10 +104,10 @@ Stop the service, replace files (keep `.env`), run `npm install` if `package.jso
 - For named instances (SQL Express), use `hostname\INSTANCENAME` as `SQL_SERVER` and leave `SQL_PORT` blank. The SQL Server Browser service must be running.
 
 **"Login failed"**
-The Windows account running the Node process does not have access to `PrepressWO`. Grant `db_datareader` + `db_datawriter` in SSMS.
+The Windows account running the Node process does not have access to `STS_WorkOrder`. Grant `db_datareader` + `db_datawriter` in SSMS.
 
 **Jobs show in browser but `/api/jobs` returns empty**
-The browser is using localStorage instead of the SQL API. This means the frontend files are from the M: drive version instead of server-sql. Replace `public/js/app.js` with the server-sql version and restart.
+The browser is using localStorage instead of the SQL API. This can happen if `public/js/app.js` was replaced with an older version. Re-download from the repo and restart.
 
 ## Contact
 

@@ -1908,6 +1908,25 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 /* ════════════════════════════════════════════════════════════════
    JOB TABLE (list view)
    ════════════════════════════════════════════════════════════════ */
+/* Bulk action bar */
+.bulk-action-bar {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 8px 14px; margin-bottom: var(--space-sm);
+  background: var(--surface-sunken); border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm); font-size: 13px;
+}
+.bulk-count { font-weight: 600; color: var(--ink); margin-right: auto; }
+.bulk-btn {
+  padding: 5px 14px; font-size: 12px; font-weight: 500; border: none;
+  border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-body);
+}
+.bulk-archive { background: var(--accent); color: #fff; }
+.bulk-archive:hover { background: var(--accent-hover); }
+.bulk-delete { background: #CB333B; color: #fff; }
+.bulk-delete:hover { background: #a82930; }
+.bulk-cancel { background: var(--surface); color: var(--ink-soft); border: 1px solid var(--border); }
+.bulk-cancel:hover { background: var(--surface-sunken); }
+
 .job-table-wrap {
   background: var(--surface-raised);
   border: 1px solid var(--border-light);
@@ -1941,8 +1960,11 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 
 /* Assigned-to-me indicator */
 .job-table tbody tr.mine { border-left: 3px solid var(--accent); }
-.job-table tbody tr.mine td:first-child { padding-left: 11px; }
 
+.col-select { width: 32px; padding: 10px 8px 10px 14px !important; cursor: default; }
+.col-select input[type="checkbox"] { cursor: pointer; }
+.job-table th.col-select { cursor: default; }
+.job-table th.col-select:hover { color: var(--ink-muted); }
 .col-job { font-family: var(--font-mono); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .col-client { font-weight: 500; color: var(--ink); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .col-desc { color: var(--ink-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2325,6 +2347,18 @@ body.text-lg .job-item-text { font-size: 15px; }
 }
 .profile-name-input:focus { border-color: var(--accent); outline: none; box-shadow: var(--shadow-input-focus); }
 .profile-name-input::placeholder { color: var(--ink-muted); }
+.profile-name-input.auth-locked {
+  background: var(--surface-sunken); cursor: default; color: var(--ink-soft);
+  border-color: transparent;
+}
+.profile-name-input.auth-locked:focus { border-color: transparent; box-shadow: none; }
+.profile-auth-label {
+  font-size: 11px; color: var(--ink-muted); margin-top: 4px;
+  display: flex; align-items: center; gap: 4px;
+}
+.profile-auth-label::before {
+  content: '\1F512'; font-size: 10px;
+}
 
 .profile-save-btn {
   width: 100%; padding: 8px 16px; margin-top: var(--space-md); font-size: 13px; font-weight: 500;

@@ -109,6 +109,7 @@
       </div>
       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
       <input type="text" class="profile-name-input" id="profileNameInput" placeholder="Your nickname..." maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()">
+      <div class="profile-auth-label" id="profileAuthLabel" style="display:none;">Windows login</div>
       <button class="profile-save-btn" onclick="saveProfile()">Save</button>
     </div>
   </div>
@@ -335,11 +336,20 @@
       <button class="filter-clear-pill" id="clearFiltersBtn" onclick="clearLandingFilters()" style="display:none">Clear Filters &times;</button>
     </div>
 
+    <!-- Bulk action bar (hidden until checkboxes are selected) -->
+    <div class="bulk-action-bar" id="bulkActionBar" style="display:none;">
+      <span class="bulk-count" id="bulkCount">0 selected</span>
+      <button class="bulk-btn bulk-archive" onclick="bulkArchiveJobs()">Archive</button>
+      <button class="bulk-btn bulk-delete" onclick="bulkDeleteJobs()">Delete</button>
+      <button class="bulk-btn bulk-cancel" onclick="clearTableSelection()">Cancel</button>
+    </div>
+
     <!-- Job table -->
     <div class="job-table-wrap" id="jobTableWrap">
       <table class="job-table" id="jobTable">
         <thead>
           <tr>
+            <th class="col-select"><input type="checkbox" id="tableSelectAll" onchange="toggleTableSelectAll(this.checked)" title="Select all"></th>
             <th onclick="setSortColumn('jobNumber')">Job# <span class="sort-arrow" id="sort-jobNumber"></span></th>
             <th onclick="setSortColumn('clientName')">Client <span class="sort-arrow" id="sort-clientName"></span></th>
             <th onclick="setSortColumn('jobDescription')">Project <span class="sort-arrow" id="sort-jobDescription"></span></th>
@@ -591,7 +601,7 @@
   </div>
 </div>
 
-      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rich Owen", "Rosette Jowsey", "Sharon Woodruff", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
       <div class="form-group" id="componentsSelectGroup">
         <label>Components (select all that apply)</label>
         <div class="components-select" id="componentsSelect"></div>
@@ -716,7 +726,7 @@
           "3AM Innovations","AAA","AAA Central Penn","AAA Hoosiers","AAA Hudson Valley","AAA Minneapolis","AAA North Penn","AAA Northampton","AAA Northway","AAA Reading Berks","AAA Schuylkill","AAA Shelby County","Akron Rule","Ad Specialty Solutions LLC","Adirondack Explorer","AIIM","Albany Law School","Al Sigl","Allied Motion","AMC","American Atheist","Amherst Memorial Chapel","Amplified","And More Marketing","Apex Dental","ARIC","ArtPark","B and L","Beaches","Berenson","Bills Foundation","BMG","Bob Weaver Motorsports","Bonadio Group","BPO","Brochures Unlimited","Buffalo Academyof Science","Buffalo Audubon Society","Buffalo Bills","Buffalo Canvas","BuffaloCleaning","Buffalo Fine Arts","Buffalo History Museum","Buffalo Museum of Science","Buffalo Oral Surgery","Buffalo Regals Hockey","Buffalo Sabres","Burchfield Penney","Burgio & Campofelice","Cambria Fire","Campbell Travel","CanisusCollege","CarX","Catholic Charities","Catholic Health System","CCFCS","Center for Inquiry Periodical","Charlie Butcher","Childrens Hospital Fdn","City Action","CMI","Coast Technology","Community Bank","Command Direct","Compu-Mail","CPS","CTG Group","Data-Mation","Dave Cacciatore","Delaware North","Delta Sonic","DesignNY","DiCamillo","DiMinos Tops","Direct Security","Dixon Schwabl","East House","Elderwood","EnSol","Erie 1 Boces","ERW","Estiator","Evergreen Health","EZFlats","Fastenal","First Amherst","Foodlink","FR Remley","Freed Maxick","Frontier","Garrett Leather","Gelia","GEVA","Getzville Fire Company","Global Indemnity","Grand Island CSD","Grand Island Chamber","GreenKnight Landscaping","Hope Rising","Horizon Health","Hospice","Hub Scrap","Hudson Park River Trust","ICC Commonwealth","Independent Health","Independent Health Foundation","Independent Health Fulfillment","Independent Health Self Funded Services","JFD Sports","JLawrence","Junior League","Kahana Feld","Kelleher Law","Ken Ton Family Support","Kingdom Bound","Krown Rust Control","Krystal Klear","KSV","Lancaster Fire","Lancaster Football","LewistonCouncil on the Arts","Lewiston Fire Co","Lewiston Kiwanis","LS&S","Luminus","Main Place Liberty","Manzella","Massena Hospital","Microhealth","Mr Smith Agency","NAMI","Napolis","Natures Lawn","Neighbor to Neighbor","NERG","NewsMax","NF City Market","NFRRS","NFTA","Night Out","Niagara Cty Deputy Sheriff","Niagara Falls Country Club","Niagara Falls Public Library","Niagara Falls Sports Hall Of Fame","Niagara Hospice","Niagara Pumpkin","Niagara University","Northtown Automotive","NTS","NYSWA","OLV","Orleans County","Park Ave","PDM","Pediatric Specialty Care","PGP","Print2Web","Proforma","Propitious Media","Razorfish","Revive Wesleyan","Ricotta & Ricotta","RMF","Robert Garey","Roswell","Roy-Hart","Sacred Heart","Safetec","SaveonSP","Seneca Gaming","Seneca Niagara","Service Collaboration WNY","Short N Numbers","Soflo Clean Water","Spaghetti & Meatballs","St. Adalberts","St. Francis Prep","St. Lawrence","Stannp","Sunday Driver","SUNY BuffState","Switzer Precision","TASC","Taste of Buffalo","The Chapel","The Martin Group","Tim Thomas","Tops Markets","Transitowne","Twin District","UB","UB Architecture","UB Campus Dining","UB Career Design","UB Orientation","UB School Of Nursing","University Libraries","Unreal Digital","USA Insulation","Veterans Outreach Center","Virginia Wireless","Vivrelle","Walden Galleria","Western Division FCU","West Seneca West","Wilcor","Williamsville North","Wind Spirit People And Places","Wireless Infrastructure","WNY Heritage","WNYIL","YMCA"
         ]'></div>
       </div></div>
-      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rich Owen", "Rosette Jowsey", "Sharon Woodruff", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
       <div class="form-group">
         <label>Assigned to (Prepress)</label>
         <select id="editAssignedToPrepress" class="assignee-select">
@@ -1042,9 +1052,7 @@
         </div>
         <div class="field-grid single-col">
           <div class="section-help-link-row">
-            <a class="section-help-link" href="file:///G:/CMI/PostalNewsAnd%20Reference/CASS_error_code_list.xlsx" target="_blank" rel="noopener">
-              G:\CMI\PostalNewsAnd Reference\CASS_error_code_list.xlsx
-            </a>
+            <span class="section-help-link" title="Open this file from your G: drive">G:\CMI\PostalNewsAnd Reference\CASS_error_code_list.xlsx</span>
           </div>
 
           <div class="field-row field-row--cb-only">
@@ -1241,7 +1249,7 @@
 
       <section class="help-section">
         <h3>What This App Does</h3>
-        <p>Digital work orders for Prepress and Tech Services. Create a job, fill in specs, write instructions, print. Saves to your browser automatically.</p>
+        <p>Digital work orders for Prepress and Tech Services. Create a job, fill in specs, write instructions, print. Saves to SQL Server automatically.</p>
       </section>
 
       <section class="help-section">
@@ -1325,7 +1333,7 @@
           <tr><td><strong>Book</strong></td><td>This guide</td></tr>
           <tr><td><strong>Moon / Sun</strong></td><td>Dark mode toggle</td></tr>
           <tr><td><strong>Search</strong></td><td>Highlights matching checklist fields, auto-expands collapsed sections</td></tr>
-          <tr><td><strong>Profile</strong></td><td>Set your nickname and photo (top right circle)</td></tr>
+          <tr><td><strong>Profile</strong></td><td>Shows your Windows login name and photo (top right circle)</td></tr>
         </table>
       </section>
 
@@ -1363,7 +1371,7 @@
 
       <section class="help-section">
         <h3>Data &amp; Backup</h3>
-        <p>Data lives in your browser's localStorage with an automatic IndexedDB backup. If localStorage gets cleared, the app recovers from IndexedDB on next load. <strong>More &gt; Restore from Backup</strong> lets you pull from it manually.</p>
+        <p>Data lives on the SQL Server database. All users on the LAN share the same data. Local settings (theme, profile photo) are stored in your browser.</p>
       </section>
 
       <section class="help-section">
@@ -1372,8 +1380,8 @@
       </section>
 
       <section class="help-section">
-        <h3>Server Version</h3>
-        <p>A server-backed version runs on the company network so multiple people can view and edit jobs at the same time. Data lives on a shared SQL Server database instead of in the browser. The interface is the same. To migrate your existing jobs, export them here and import into the server version.</p>
+        <h3>Multi-User</h3>
+        <p>This app runs on the company LAN. Multiple people can view and edit jobs at the same time. If someone else edits a job you have open, you'll see a conflict message on save. Use <strong>Refresh</strong> on the landing page to pull the latest data from the server.</p>
       </section>
 
       <section class="help-section help-section-limits">

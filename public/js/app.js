@@ -45,7 +45,7 @@
         return out;
     });
     const PIECE_FORMAT_OPTIONS = ["6x9.5\u2033 Envelope", "9x12 Envelope", "A7 Envelope", "Booklet", "Buckslip", "Label", "Letter", "No. 9 BRE Envelope", "No. 10 Envelope", "No. 10 Envelope Window", "Postcard", "Remit", "Self-Mailer", "Sticker"];
-    const CSR_NAMES = ["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rich Owen", "Rosette Jowsey", "Sharon Woodruff", "Stef Tarpy"];
+    const CSR_NAMES = ["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"];
     // Flat Size dropdown options — standard vs envelope
     const FLAT_SIZES_STANDARD = [
         "3.5\u2033 x 5\u2033",
@@ -403,6 +403,31 @@
     function getUserName() { return localStorage.getItem('prepressUserName') || ''; }
     function byLabel(name) { return name ? ' by ' + name : ''; }
 
+    // ── Windows auth (NTLM) ──
+    let _windowsAuthenticated = false;
+
+    async function fetchWindowsUser() {
+        try {
+            const resp = await fetch('/api/whoami');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.authenticated && data.username) {
+                localStorage.setItem('prepressUserName', data.username);
+                _windowsAuthenticated = true;
+                const input = document.getElementById('profileNameInput');
+                if (input) {
+                    input.value = data.username;
+                    input.readOnly = true;
+                    input.classList.add('auth-locked');
+                }
+                const label = document.getElementById('profileAuthLabel');
+                if (label) label.style.display = '';
+            }
+        } catch (e) {
+            // NTLM not available -- manual mode
+        }
+    }
+
     // ── Photo crop state ──
     let _cropState = { img: null, scale: 1, baseScale: 1, ox: 0, oy: 0, dragging: false, sx: 0, sy: 0 };
 
@@ -551,7 +576,14 @@
         } else {
             const saved = localStorage.getItem('prepressUserName') || '';
             const savedPhotoSrc = localStorage.getItem('prepressUserPhotoSrc');
-            document.getElementById('profileNameInput').value = saved;
+            const nameInput = document.getElementById('profileNameInput');
+            nameInput.value = saved;
+            if (_windowsAuthenticated) {
+                nameInput.readOnly = true;
+                nameInput.classList.add('auth-locked');
+                const label = document.getElementById('profileAuthLabel');
+                if (label) label.style.display = '';
+            }
 
             // Reset crop area to saved state (use original source for re-cropping)
             const img = document.getElementById('profileCropImg');
@@ -678,6 +710,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+        // Detect Windows username (NTLM) before profile init
+        await fetchWindowsUser();
+
         // Init profile
         updateProfileBtn();
         updateLandingGreeting();
@@ -711,6 +746,25 @@
 
     // Close current job (add timestamp) when browser/tab is closed
     window.addEventListener('beforeunload', () => {
+        // Flush any debounced save immediately so edits aren't lost
+        if (_persistJobTimer && currentJobId) {
+            clearTimeout(_persistJobTimer);
+            _persistJobTimer = null;
+            const j = (jobsCache || []).find(x => x.id === currentJobId);
+            if (j) {
+                const now = new Date().toISOString();
+                j.lastModified = now;
+                j.lastModifiedBy = getUserName();
+                const payload = { ...j, rowVersion: rowVersions[j.id] || 1 };
+                delete payload.components;
+                fetch('/api/jobs/' + j.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    keepalive: true
+                });
+            }
+        }
         if (currentJobId) localStorage.setItem('prepressActiveJobTime', Date.now().toString());
         stopLockHeartbeat();
         if (currentJobId) releaseJobLock(currentJobId);
@@ -947,8 +1001,8 @@
         applyLandingFilters();
     }
 
-    function refreshLanding() {
-        jobsCache = null;
+    async function refreshLanding() {
+        await refreshJobs();
         loadJobs();
     }
 
@@ -1164,7 +1218,7 @@
         }
 
         if (jobs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="no-jobs-table-message">' +
+            tbody.innerHTML = '<tr><td colspan="9" class="no-jobs-table-message">' +
                 (landingViewTab === 'my'
                     ? 'No jobs assigned to you.<br><span style="font-size:11px;color:var(--ink-muted);">Jobs appear here when your name matches the Assigned To field.</span>'
                     : 'No matching jobs') +
@@ -1184,6 +1238,7 @@
             const modified = formatModifiedDate(j.lastModified || j.dateCreated);
 
             return '<tr class="' + mine.trim() + '" onclick="loadJob(\'' + j.id + '\')">' +
+                '<td class="col-select" onclick="event.stopPropagation()"><input type="checkbox" class="table-row-check" data-job-id="' + j.id + '" onchange="updateBulkBar()"></td>' +
                 '<td class="col-job">' + escHtml(j.jobNumber || '') + version + '</td>' +
                 '<td class="col-client">' + escHtml(j.clientName || '') + '</td>' +
                 '<td class="col-desc">' + desc + '</td>' +
@@ -1565,26 +1620,132 @@
         if (!confirm(`Delete ${checkboxes.length} selected job(s)?`)) return;
 
         const idsToDelete = Array.from(checkboxes).map(cb => cb.getAttribute('data-job-id'));
+        const deletedIds = [];
 
-        // Delete from server
+        // Delete from server -- track which ones actually succeeded
         for (const id of idsToDelete) {
             try {
-                await fetch('/api/jobs/' + id, { method: 'DELETE' });
-                delete rowVersions[id];
+                const res = await fetch('/api/jobs/' + id, { method: 'DELETE' });
+                if (res.ok) {
+                    delete rowVersions[id];
+                    deletedIds.push(id);
+                }
             } catch (e) { /* continue with others */ }
         }
 
         let jobs = getActiveJobs();
-        if (currentJobId && idsToDelete.includes(currentJobId)) {
+        if (currentJobId && deletedIds.includes(currentJobId)) {
             currentJobId = null;
             showNoJobState();
         }
 
-        jobs = jobs.filter(j => !idsToDelete.includes(j.id));
+        jobs = jobs.filter(j => !deletedIds.includes(j.id));
         saveActiveJobs(jobs);
         loadJobs();
 
+        if (deletedIds.length < idsToDelete.length) {
+            alert((idsToDelete.length - deletedIds.length) + ' job(s) could not be deleted (server error).');
+        }
+
         if (jobs.length === 0) closeJobDropdown();
+    }
+
+    // ── Landing page table bulk actions ──
+
+    function toggleTableSelectAll(checked) {
+        document.querySelectorAll('#jobTableBody .table-row-check').forEach(cb => { cb.checked = checked; });
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const checked = document.querySelectorAll('#jobTableBody .table-row-check:checked');
+        const bar = document.getElementById('bulkActionBar');
+        const countEl = document.getElementById('bulkCount');
+        const selectAll = document.getElementById('tableSelectAll');
+        const allBoxes = document.querySelectorAll('#jobTableBody .table-row-check');
+        if (checked.length > 0) {
+            bar.style.display = '';
+            countEl.textContent = checked.length + ' selected';
+        } else {
+            bar.style.display = 'none';
+        }
+        if (selectAll) {
+            selectAll.checked = allBoxes.length > 0 && checked.length === allBoxes.length;
+            selectAll.indeterminate = checked.length > 0 && checked.length < allBoxes.length;
+        }
+    }
+
+    function clearTableSelection() {
+        document.querySelectorAll('#jobTableBody .table-row-check').forEach(cb => { cb.checked = false; });
+        const selectAll = document.getElementById('tableSelectAll');
+        if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+        updateBulkBar();
+    }
+
+    function getSelectedTableJobIds() {
+        return Array.from(document.querySelectorAll('#jobTableBody .table-row-check:checked'))
+            .map(cb => cb.getAttribute('data-job-id'));
+    }
+
+    async function bulkArchiveJobs() {
+        const ids = getSelectedTableJobIds();
+        if (ids.length === 0) return;
+        if (!confirm('Archive ' + ids.length + ' job' + (ids.length > 1 ? 's' : '') + '?')) return;
+
+        let failed = 0;
+        for (const id of ids) {
+            try {
+                const res = await fetch('/api/jobs/' + id + '/archive', { method: 'POST' });
+                if (!res.ok) failed++;
+            } catch (e) { failed++; }
+        }
+
+        if (currentJobId && ids.includes(currentJobId)) {
+            currentJobId = null;
+            showNoJobState();
+        }
+
+        await refreshJobs();
+        loadJobs();
+        const ok = ids.length - failed;
+        if (failed > 0) {
+            showToast(ok + ' archived, ' + failed + ' failed');
+        } else {
+            showToast(ok + ' job' + (ok > 1 ? 's' : '') + ' archived');
+        }
+    }
+
+    async function bulkDeleteJobs() {
+        const ids = getSelectedTableJobIds();
+        if (ids.length === 0) return;
+        if (!(await verifyAdminPassword())) return;
+        if (!confirm('Permanently delete ' + ids.length + ' job' + (ids.length > 1 ? 's' : '') + '?')) return;
+
+        let failed = 0;
+        for (const id of ids) {
+            try {
+                const res = await fetch('/api/jobs/' + id, { method: 'DELETE' });
+                if (res.ok) {
+                    delete rowVersions[id];
+                } else {
+                    failed++;
+                }
+            } catch (e) { failed++; }
+        }
+
+        if (currentJobId && ids.includes(currentJobId)) {
+            currentJobId = null;
+            showNoJobState();
+        }
+
+        await refreshJobs();
+        loadJobs();
+        const ok = ids.length - failed;
+        if (failed > 0) {
+            showToast(ok + ' deleted, ' + failed + ' failed');
+        } else {
+            showToast(ok + ' job' + (ok > 1 ? 's' : '') + ' deleted');
+        }
     }
 
     function closeCurrentJob() {
@@ -2196,7 +2357,8 @@
         if (!(await verifyAdminPassword())) return;
         if (!confirm('Permanently delete this archived job?')) return;
         try {
-            await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
+            const res = await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Server returned ' + res.status);
         } catch (e) {
             alert('Error deleting archived job: ' + e.message);
             return;
@@ -2327,12 +2489,8 @@
     // ========== ADMIN PASSWORD ==========
     // Simple obfuscation (btoa) — not cryptographic, just prevents casual reading in localStorage.
     // This is a guard against accidental deletion, not a security system.
-    const ADMIN_HASH = 'd6a9066ff92289a82ff3dc163f9476aafadebb336c770278d871b8d8d9848727';
-
-    async function sha256(str) {
-        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+    // Admin hash moved to server -- crypto.subtle requires HTTPS,
+    // which is unavailable on the LAN (http://192.168.x.x).
 
     let _adminPwResolve = null;
 
@@ -2356,10 +2514,20 @@
         const input = document.getElementById('adminPasswordInput');
         const pw = input.value;
         if (!pw) return;
-        const hash = await sha256(pw);
-        if (hash !== ADMIN_HASH) {
-            document.getElementById('adminPwError').style.display = '';
-            input.select();
+        try {
+            const res = await fetch('/api/verify-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pw })
+            });
+            const data = await res.json();
+            if (!data.verified) {
+                document.getElementById('adminPwError').style.display = '';
+                input.select();
+                return;
+            }
+        } catch (e) {
+            alert('Error verifying password');
             return;
         }
         document.getElementById('adminPasswordModal').style.display = 'none';
@@ -3194,6 +3362,7 @@ ${sectionsHTML}
         });
         let addedCount = 0;
         let updatedCount = 0;
+        let failedCount = 0;
 
         for (const c of pendingImportData) {
             const idx = pendingImportData.indexOf(c);
@@ -3202,30 +3371,48 @@ ${sectionsHTML}
 
             try {
                 if (c.status === 'new') {
-                    await fetch('/api/jobs', {
+                    const res = await fetch('/api/jobs', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(c.job)
                     });
+                    if (!res.ok) throw new Error('Server rejected create');
                     addedCount++;
                 } else {
-                    // Update existing - delete and re-create to handle component changes
-                    await fetch('/api/jobs/' + c.existingId, { method: 'DELETE' });
-                    c.job.id = c.existingId;
-                    await fetch('/api/jobs', {
+                    // Update existing: create replacement first, then delete old.
+                    // This order prevents data loss if the network drops mid-operation.
+                    const tempId = c.existingId + '_import_' + Date.now();
+                    c.job.id = tempId;
+                    const createRes = await fetch('/api/jobs', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(c.job)
                     });
+                    if (!createRes.ok) throw new Error('Server rejected create');
+                    // Create succeeded -- safe to delete the old version
+                    await fetch('/api/jobs/' + c.existingId, { method: 'DELETE' });
+                    // Now delete the temp and re-create with the original ID
+                    await fetch('/api/jobs/' + tempId, { method: 'DELETE' });
+                    c.job.id = c.existingId;
+                    const finalRes = await fetch('/api/jobs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(c.job)
+                    });
+                    if (!finalRes.ok) throw new Error('Server rejected final create');
                     updatedCount++;
                 }
-            } catch (e) { /* continue with others */ }
+            } catch (e) {
+                failedCount++;
+            }
         }
 
         await refreshJobs();
         loadJobs();
         closeImportModal();
-        alert('Imported: ' + addedCount + ' added, ' + updatedCount + ' updated.');
+        let msg = 'Imported: ' + addedCount + ' added, ' + updatedCount + ' updated.';
+        if (failedCount > 0) msg += '\n' + failedCount + ' failed (server error).';
+        alert(msg);
     }
 
     function toggleCollapse(titleEl) {

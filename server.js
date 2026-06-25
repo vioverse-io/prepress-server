@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 const { getPool, query, healthCheck, sql } = require('./db');
 
 const app = express();
@@ -14,6 +15,44 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/health', async (req, res) => {
     const status = await healthCheck();
     res.status(status.connected ? 200 : 503).json(status);
+});
+
+// ── User Identity (NTLM) ──
+
+let ntlmMiddleware;
+if (process.env.NTLM_AUTH === 'true') {
+    try {
+        const ntlm = require('express-ntlm');
+        ntlmMiddleware = ntlm({ debug: function() {} });
+        console.log('NTLM auth enabled -- Windows usernames will be detected');
+    } catch (e) {
+        console.log('express-ntlm not installed -- falling back to manual username');
+    }
+}
+
+if (ntlmMiddleware) {
+    app.get('/api/whoami', ntlmMiddleware, (req, res) => {
+        res.json({
+            username: req.ntlm.UserName,
+            domain: req.ntlm.DomainName,
+            authenticated: true
+        });
+    });
+} else {
+    app.get('/api/whoami', (req, res) => {
+        res.json({ username: null, authenticated: false });
+    });
+}
+
+// ── Admin Password Verification ──
+
+const ADMIN_HASH = 'd6a9066ff92289a82ff3dc163f9476aafadebb336c770278d871b8d8d9848727';
+
+app.post('/api/verify-admin', (req, res) => {
+    const { password } = req.body;
+    if (!password) return res.json({ verified: false });
+    const hash = crypto.createHash('sha256').update(password).digest('hex');
+    res.json({ verified: hash === ADMIN_HASH });
 });
 
 // ── Jobs: List active ──
@@ -451,7 +490,7 @@ function safeParseJSON(str, fallback) {
 
 // ── Start ──
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Prepress WO server running on port ${PORT}`);
-    console.log(`http://localhost:${PORT}`);
+    console.log(`http://localhost:${PORT} (also available on LAN via this machine's IP)`);
 });
