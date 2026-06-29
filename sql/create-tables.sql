@@ -29,6 +29,7 @@ BEGIN
         archivedDate    NVARCHAR(30) DEFAULT NULL,
         activeComponentId NVARCHAR(36) DEFAULT '',
         activeDepartment NVARCHAR(20) DEFAULT 'prepress',
+        status          NVARCHAR(20) DEFAULT 'new',
         deletionLog     NVARCHAR(MAX) DEFAULT '[]',
         rowVersion      INT NOT NULL DEFAULT 1
     );
@@ -55,5 +56,12 @@ BEGIN
     );
 
     CREATE INDEX idx_components_jobId ON components(jobId);
+END
+GO
+
+-- Migration: add status column to existing jobs tables
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('jobs') AND name = 'status')
+BEGIN
+    ALTER TABLE jobs ADD status NVARCHAR(20) DEFAULT 'new';
 END
 GO

@@ -36,7 +36,14 @@
   --inactive-bg: #d8d5cf;
   --danger:     #b91c1c;
   --danger-soft: rgba(185,28,28,0.08);
-  /* --warning removed: no date fields in current UI to apply it to */
+
+  /* Landing v2 tokens */
+  --navy:       #1e3a5f;
+  --navy-fill:  rgba(30,58,95,0.10);
+  --divider:    #b0aca2;
+  --amber:      #d97706;
+  --amber-ink:  #ffffff;
+  --status-cancel: #CB333B;
 
   /* Typography */
   --font-body:    'DM Sans', system-ui, sans-serif;
@@ -67,6 +74,7 @@
    RESET & BASE
    ════════════════════════════════════════════════════════════════ */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { overflow-y: scroll; }
 
 body {
   font-family: var(--font-body);
@@ -631,6 +639,8 @@ body.read-only .ql-toolbar,
 body.read-only .ql-editor,
 body.read-only .job-field--editable,
 body.read-only .version-display,
+body.read-only .status-header-trigger,
+body.read-only .col-status .status-badge,
 body.read-only .nav-btn.primary {
   pointer-events: none;
   opacity: 0.6;
@@ -862,8 +872,8 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
    CSR INSTRUCTIONS SIDEBAR — "Document window" feel
    ════════════════════════════════════════════════════════════════ */
 .sidebar {
-  width: 400px;
-  min-width: 360px;
+  width: 480px;
+  min-width: 440px;
   display: flex;
   flex-direction: column;
   background: var(--surface-raised);
@@ -1119,24 +1129,24 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
 
 .checklist-panel {
   flex: 1;
-  padding: var(--space-xl);
+  padding: 20px;
   overflow-y: auto;
   min-width: 300px;
 }
 
 /* ── Section group ── */
 .section-group {
-  margin-bottom: var(--space-xl);
+  margin-bottom: 18px;
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--dept-accent);
-  padding-bottom: var(--space-sm);
-  margin-bottom: var(--space-md);
+  padding-bottom: 5px;
+  margin-bottom: 9px;
   border-bottom: 2px solid var(--dept-accent);
   display: flex;
   align-items: center;
@@ -1185,7 +1195,7 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--space-sm) var(--space-lg);
+  gap: 4px 20px;
 }
 
 .field-grid.single-col {
@@ -1200,15 +1210,15 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
   letter-spacing: 0.1em;
   color: var(--ink-muted);
   border-top: 1px solid var(--border-light);
-  padding-top: var(--space-md);
-  margin-top: var(--space-sm);
-  margin-bottom: var(--space-md);
+  padding-top: 9px;
+  margin-top: 6px;
+  margin-bottom: 9px;
 }
 
 .two-col-sections {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-xl);
+  gap: 24px;
   align-items: start;
 }
 
@@ -1216,8 +1226,8 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
   display: flex;
   align-items: flex-start;
   gap: var(--space-sm);
-  padding: var(--space-sm) 0;
-  min-height: 44px;
+  padding: 3px 0;
+  min-height: 33px;
 }
 
 /* ── Toggle switch (replaces checkbox) ── */
@@ -1226,7 +1236,7 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
   width: 36px;
   height: 20px;
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .toggle-switch input {
@@ -1272,12 +1282,12 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
 
 /* ── Field label ── */
 .field-label {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--ink-soft);
   white-space: nowrap;
   min-width: 90px;
-  padding-top: 4px;
+  padding-top: 3px;
   transition: color 0.15s;
 }
 
@@ -1295,11 +1305,11 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
 .field-input input[type="text"],
 .field-input textarea {
   width: 100%;
-  padding: 8px 12px;
+  padding: 5px 10px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink);
   background: var(--surface-raised);
   outline: none;
@@ -1309,13 +1319,13 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
      inline height based on scrollHeight, which drifts across panel
      hide/show cycles; the min-height here is the floor below which
      neither element can visually shrink. */
-  min-height: 38px;
+  min-height: 31px;
 }
 /* Empty textareas (showing placeholder only) stay at the exact input
    height — prevents autoResize drift when TS/Prepress tabs are toggled
    or a job is imported. Populated textareas grow normally. */
 .field-input textarea:placeholder-shown {
-  height: 38px !important;
+  height: 31px !important;
 }
 
 .field-input input[type="text"]:hover,
@@ -1356,7 +1366,7 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
    Font-size + min-height match input[type="text"] so textareas and text
    inputs sit at the same visual height when empty. Monospace is kept
    (intentional for path readability) but sized to match. min-height is
-   set on the shared rule above (38px) so both elements share the floor;
+   set on the shared rule above (31px) so both elements share the floor;
    the :placeholder-shown rule above pins empty textareas to exactly that
    value so autoResize scrollHeight drift can't change the rendered height. */
 .field-input textarea {
@@ -1364,7 +1374,7 @@ body.read-only .ql-editor { background: var(--surface-sunken); }
   overflow: hidden;
   line-height: 1.4;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-height: 1.4; }
@@ -1631,6 +1641,11 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .btn-save:hover { background: var(--accent-hover); }
 .btn-cancel { background: var(--surface-sunken); color: var(--ink-soft); padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-body); }
 
+/* ── Reload Modal (stale-cache 409) ── */
+.reload-modal-content { max-width: 268px; text-align: center; }
+.reload-modal-title { font: 600 14px var(--font-body); color: var(--ink); margin: 0 0 var(--space-md) 0; }
+.reload-modal-content .modal-buttons { justify-content: center; }
+
 /* ── QC Warning Modal ── */
 .qc-warning-header {
   font-size: 15px;
@@ -1820,32 +1835,131 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 }
 .view-tab.active .tab-count { background: var(--accent-soft); color: var(--accent); }
 
-/* ── Filter bar ── */
-.filter-bar {
-  display: flex; align-items: center; gap: var(--space-sm);
-  margin-bottom: var(--space-md); flex-wrap: wrap;
+/* ── Controls block (Show + Filter rows) ── */
+.controls-block { margin-bottom: 14px; }
+/* Horizontal rules between rows */
+.controls-block .controls-grid { padding-bottom: 10px; border-bottom: 1px solid var(--border-light); }
+.filter-row + .active-chips-row { border-top: 1px solid var(--border-light); padding-top: 10px; }
+.controls-grid {
+  display: grid;
+  grid-template-columns: 54px minmax(0,380px) max-content 1fr;
+  gap: 11px 14px;
+  align-items: center;
 }
-.filter-label { font-size: 11px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.filter-sep { width: 1px; height: 20px; background: var(--border-light); margin: 0 4px; }
+.ctrl-label {
+  font-size: 11px; font-weight: 600; color: var(--ink-muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.ctrl-divider {
+  width: 1px; height: 28px; background: var(--divider); flex-shrink: 0;
+}
 
-/* Multi-select filter button */
-.filter-btn {
+/* Segmented control (iOS track + rounded pill) */
+.seg-group {
+  display: inline-flex; background: var(--surface-sunken);
+  border-radius: 20px; padding: 3px; gap: 3px;
+}
+.seg-group.fill { display: flex; width: 100%; }
+.seg-opt {
+  font: 600 12px var(--font-body); border: none; background: transparent;
+  color: var(--ink-soft); border-radius: 16px; padding: 5px 13px;
+  cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+}
+.seg-group.fill .seg-opt { flex: 1; padding: 5px 8px; }
+.seg-opt.active { background: var(--accent); color: #fff; }
+.seg-opt.active-amber { background: var(--amber); color: var(--amber-ink); }
+.seg-opt.idle-danger { color: var(--danger); }
+.seg-opt.idle-amber { color: var(--amber); }
+
+/* Quick-view count badge inside segmented control */
+.qv-count {
+  font: 700 10px var(--font-mono); padding: 0 6px; border-radius: 8px;
+  margin-left: 2px; background: var(--surface-sunken); color: var(--ink-muted);
+}
+.seg-opt.active .qv-count,
+.seg-opt.active-amber .qv-count { background: rgba(255,255,255,0.25); color: #fff; }
+.seg-opt.idle-danger .qv-count.has-count { background: var(--danger); color: #fff; }
+.seg-opt.idle-amber .qv-count.has-count { background: var(--amber); color: var(--amber-ink); }
+
+/* Group control wrapper (fills column 3, group track flexes inside) */
+.group-cell { display: flex; align-items: center; gap: 11px; }
+.group-cell .seg-group { flex: 1; display: flex; }
+.group-cell .seg-group .seg-opt { flex: 1; padding: 5px 8px; }
+
+/* ── Filter row (Row 2: inline-text controls) ── */
+.filter-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px;
+}
+.filter-row .ctrl-label { width: auto; flex-shrink: 0; margin-right: 2px; }
+
+/* Vertical rule between major filter groups */
+.filter-rule {
+  width: 1px; height: 20px; background: var(--divider);
+  flex-shrink: 0; margin: 0 6px; align-self: center;
+}
+
+/* Inline-text option (Status, Dept) — sunken track like .seg-group */
+.inline-seg {
+  display: inline-flex; align-items: center; gap: 0;
+  background: var(--surface-sunken); border-radius: 20px; padding: 3px 10px;
+}
+.inline-opt {
+  display: inline-grid;
+  font: 500 13px var(--font-body);
+  color: var(--ink-muted);
+  background: none; border: none;
+  cursor: pointer; white-space: nowrap;
+  padding: 4px 0; line-height: 1.4;
+}
+.inline-opt > span { grid-area: 1/1; }
+.inline-opt::after {
+  content: attr(data-label);
+  grid-area: 1/1;
+  font-weight: 700;
+  visibility: hidden;
+  pointer-events: none;
+}
+.inline-opt:hover { color: var(--ink-soft); }
+.inline-opt.active       { font-weight: 700; color: var(--ink); }
+.inline-opt.active-real  { font-weight: 700; color: var(--accent); }
+.inline-opt.active-navy  { font-weight: 700; color: var(--navy); }
+
+/* Middot separator between inline options */
+.inline-dot {
+  color: var(--border); font-weight: 400; margin: 0 6px;
+  user-select: none; font-size: 13px; line-height: 1;
+}
+
+/* Inline trigger (CSR, Assignee, Client, Updated) */
+.inline-trigger {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 500 13px var(--font-body);
+  color: var(--ink-muted);
+  background: none; border: none;
+  cursor: pointer; white-space: nowrap;
+  padding: 4px 0; line-height: 1.4;
   position: relative;
-  font-family: var(--font-body); font-size: 12px; font-weight: 500;
-  padding: 5px 12px; border: 1.5px solid var(--border);
-  border-radius: 20px; background: var(--surface-raised);
-  color: var(--ink-soft); cursor: pointer;
-  display: flex; align-items: center; gap: 5px;
   user-select: none;
 }
-.filter-btn:hover { border-color: var(--accent); color: var(--accent); }
-.filter-btn.has-selection { background: var(--accent); color: white; border-color: var(--accent); }
-.filter-btn .filter-arrow { font-size: 8px; opacity: 0.6; }
-.filter-btn .filter-count-badge {
-  font-size: 10px; font-weight: 700;
-  background: rgba(255,255,255,0.3); padding: 0 5px; border-radius: 8px;
-  margin-left: 2px;
+.inline-trigger .lbl {
+  display: inline-grid;
 }
+.inline-trigger .lbl > span { grid-area: 1/1; }
+.inline-trigger .lbl::after {
+  content: attr(data-label);
+  grid-area: 1/1;
+  font-weight: 700;
+  visibility: hidden;
+  pointer-events: none;
+}
+.inline-trigger .trigger-chevron {
+  font-size: 8px; opacity: 0.6; line-height: 1;
+}
+.inline-trigger:hover { color: var(--ink-soft); }
+.inline-trigger.has-selection { font-weight: 700; color: var(--accent); }
+.inline-trigger.has-selection .trigger-chevron { opacity: 1; }
 
 /* Multi-select dropdown panel */
 .filter-dropdown {
@@ -1885,25 +1999,34 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .filter-dropdown-actions .apply-btn { background: var(--accent); color: white; border-radius: var(--radius-sm); }
 .filter-dropdown-actions .apply-btn:hover { background: var(--accent-hover); color: white; }
 
-/* Quick-toggle filter pills (dept, time) */
-.filter-pill {
-  font-family: var(--font-body); font-size: 12px; font-weight: 500;
-  padding: 5px 12px; border: 1.5px solid var(--border);
-  border-radius: 20px; background: var(--surface-raised);
-  color: var(--ink-soft); cursor: pointer;
-}
-.filter-pill:hover { border-color: var(--accent); color: var(--accent); }
-.filter-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
-.filter-pill.dept-prepress.active { background: #CB333B; border-color: #CB333B; }
-.filter-pill.dept-ts.active { background: #1e3a5f; border-color: #1e3a5f; }
+/* Updated trigger uses .inline-trigger; anchor dropdown to the right */
+.inline-trigger .filter-dropdown { left: 0; }
+.inline-trigger.updated-trigger .filter-dropdown { left: auto; right: 0; }
 
-.filter-clear-pill {
-  font-family: var(--font-body); font-size: 12px; font-weight: 600;
-  padding: 5px 12px; border: 1.5px solid var(--danger);
-  border-radius: 20px; background: none;
-  color: var(--danger); cursor: pointer; margin-left: 4px;
+/* Active filter chips */
+.active-chips-row {
+  display: flex; align-items: flex-start; margin-top: 10px;
 }
-.filter-clear-pill:hover { background: var(--danger); color: white; }
+.active-chips-label {
+  width: 54px; flex-shrink: 0; margin-right: 14px;
+  font-size: 11px; font-weight: 600; color: var(--ink-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.6;
+}
+.active-chips-list {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+}
+.active-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-soft); white-space: nowrap;
+}
+.active-chip-x {
+  color: var(--accent); cursor: pointer; font-size: 15px; font-weight: 700; line-height: 1;
+}
+.clear-all-link {
+  font-size: 11.5px; font-weight: 700; color: var(--accent);
+  cursor: pointer; white-space: nowrap; background: none; border: none;
+  font-family: var(--font-body);
+}
 
 /* ════════════════════════════════════════════════════════════════
    JOB TABLE (list view)
@@ -1956,6 +2079,8 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 }
 .job-table tbody tr { cursor: pointer; transition: background 0.1s; }
 .job-table tbody tr:hover { background: var(--accent-soft); }
+.job-table tbody tr.group-header-row { cursor: default; }
+.job-table tbody tr.group-header-row:hover { background: var(--surface-sunken); }
 .job-table tbody tr:last-child td { border-bottom: none; }
 
 /* Assigned-to-me indicator */
@@ -1970,30 +2095,110 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .col-desc { color: var(--ink-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .col-csr { white-space: nowrap; }
 .col-assignee { white-space: nowrap; }
-.col-modified { white-space: nowrap; font-size: 12px; }
 .col-status { white-space: nowrap; }
 
-/* Status + dept dots */
+/* Status badges (outline-only, navy text) */
 .status-badge {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.04em; padding: 2px 8px; border-radius: 10px;
-  display: inline-block;
+  display: inline-block; background: transparent; color: var(--navy);
 }
-.status-badge.complete { background: #dcfce7; color: #166534; }
-.status-badge.in-progress { background: #fef3c7; color: #92400e; }
-.status-badge.new { background: var(--accent-soft); color: var(--accent); }
+.status-badge.new { border: 1.5px solid var(--accent); }
+.status-badge.in-progress { border: 1.5px dashed var(--accent); }
+.status-badge.complete { border: 1.5px solid var(--navy); }
+.status-badge.on-hold { background: transparent; border: 1.5px dashed var(--amber); color: var(--amber); }
+.status-badge.cancelled { background: var(--status-cancel); border: 1.5px solid var(--status-cancel); color: #fff; }
 
+/* Status header control (detail screen) */
+.job-field--status { position: relative; }
+.status-header-trigger {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  padding: 2px 4px; border-radius: var(--radius-sm);
+}
+.status-header-trigger:hover { background: var(--accent-soft); }
+.status-header-caret {
+  font-size: 8px; color: var(--ink-muted); margin-top: 1px;
+}
+
+/* Status popover (shared: header + list) */
+.status-popover {
+  display: none; position: absolute; z-index: 200;
+  background: var(--surface-raised); border: 1.5px solid var(--accent);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  padding: 6px 0; min-width: 160px;
+}
+.status-popover.open { display: block; }
+.status-popover-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; cursor: pointer; font: 500 12px var(--font-body);
+  color: var(--ink-soft); white-space: nowrap;
+}
+.status-popover-option:hover { background: var(--accent-soft); }
+.status-popover-check {
+  width: 14px; text-align: center; font-size: 11px; color: var(--accent);
+}
+
+/* List status cell click target */
+.col-status { position: relative; }
+.col-status .status-badge { cursor: pointer; }
+.col-status .status-badge:hover { opacity: 0.8; }
+
+/* Dept dots */
 .dept-dots { display: flex; gap: 3px; }
 .dept-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--border); }
 .dept-dot.filled-prepress { background: #CB333B; border-color: #CB333B; }
 .dept-dot.filled-ts { background: #1e3a5f; border-color: #1e3a5f; }
 
+/* Assignee avatar (dept-colored ring, no fill) */
 .assignee-avatar {
   width: 22px; height: 22px; border-radius: 50%;
-  background: var(--nav-bg); color: white;
-  font-size: 9px; font-weight: 600;
+  background: transparent; color: var(--ink-muted);
+  font-size: 9px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
-  margin-right: 5px; vertical-align: middle;
+  margin-right: 8px; vertical-align: middle;
+  border: 1.5px solid var(--accent); flex-shrink: 0;
+}
+.assignee-avatar.ring-ts { border-color: var(--navy); }
+
+/* Assigned column header CS/TS toggle */
+.assign-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 23px; height: 23px; border-radius: 50%;
+  font-size: 9px; font-weight: 700; cursor: pointer;
+  margin-left: 5px; vertical-align: middle;
+  background: transparent;
+}
+.assign-toggle-cs { border: 1.5px solid var(--accent); color: var(--accent); }
+.assign-toggle-ts { border: 1.5px solid var(--navy); color: var(--navy); }
+.assign-toggle.inactive { opacity: 0.38; }
+
+/* Signoff Due column */
+.col-due { white-space: nowrap; }
+.due-date { display: block; font-weight: 600; font-size: 12.5px; line-height: 1.2; }
+.due-time { font-size: 11px; color: var(--ink-muted); }
+.due-date.complete, .due-time.complete { color: var(--ink-muted); }
+.due-date.overdue, .due-time.overdue { color: var(--danger); }
+.due-date.due-soon, .due-time.due-soon { color: var(--amber); }
+.due-date.due-today, .due-time.due-today { color: var(--amber); }
+
+.due-tag {
+  font-size: 8.5px; font-weight: 700; letter-spacing: 0.05em;
+  padding: 1px 5px; border-radius: 7px; white-space: nowrap;
+  display: inline-block; margin-left: 6px; vertical-align: middle;
+}
+.due-tag-overdue { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
+.due-tag-soon { background: transparent; color: var(--amber); border: 1px solid var(--amber); }
+
+/* Group header row */
+.group-header-row td {
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 14px;
+}
+.group-header-label {
+  font: 700 11px var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--ink-soft);
 }
 
 .version-badge {
@@ -2005,6 +2210,7 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .no-jobs-table-message {
   padding: 40px; text-align: center; color: var(--ink-muted); font-size: 14px;
 }
+.no-jobs-subline { display: block; margin-top: 6px; font-size: 11px; color: var(--ink-muted); }
 
 /* ════════════════════════════════════════════════════════════════
    PAGINATION
@@ -2573,6 +2779,14 @@ body.text-lg .job-item-text { font-size: 15px; }
   --danger:        #ef4444;
   --danger-soft:   rgba(239,68,68,0.15);
 
+  /* Landing v2 tokens */
+  --navy:       #7AA7D0;
+  --navy-fill:  rgba(122,167,208,0.16);
+  --divider:    #535b67;
+  --amber:      #fbbf24;
+  --amber-ink:  #1a1a2e;
+  --status-cancel: #C8424A;
+
   --modal-backdrop: rgba(0,0,0,0.6);
 
   /* Shadows softened for lifted surfaces — heavy black on near-white-grey
@@ -2631,6 +2845,13 @@ body.text-lg .job-item-text { font-size: 15px; }
   color: var(--ink-soft) !important;
   opacity: 1;
 }
+
+/* Status popover — dark mode uses sunken surface like other dropdowns */
+[data-theme="dark"] .status-popover {
+  background: var(--surface-sunken);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+[data-theme="dark"] .status-popover-option:hover { background: #2d3340; }
 
 /* Lock banner / readonly badge — amber on dark */
 [data-theme="dark"] .lock-banner,
@@ -2723,14 +2944,9 @@ body.text-lg .job-item-text { font-size: 15px; }
   opacity: 0.85;
 }
 
-/* Dark mode: dept-dot fill colors for landing page table */
+/* Dark mode: landing page table overrides */
 [data-theme="dark"] .dept-dot.filled-prepress { background: #E86E74; border-color: #E86E74; }
 [data-theme="dark"] .dept-dot.filled-ts { background: #6A97C2; border-color: #6A97C2; }
-[data-theme="dark"] .filter-pill.dept-prepress.active { background: #E86E74; border-color: #E86E74; }
-[data-theme="dark"] .filter-pill.dept-ts.active { background: #6A97C2; border-color: #6A97C2; }
-[data-theme="dark"] .status-badge.complete { background: rgba(34,197,94,0.15); color: #4ade80; }
-[data-theme="dark"] .status-badge.in-progress { background: rgba(251,191,36,0.15); color: #fbbf24; }
-[data-theme="dark"] .status-badge.new { background: var(--accent-soft); color: var(--accent); }
 
 /* Specs area softening — dial back the harsh bright whites in field inputs
    and dropdowns. Slightly lifted background + softer text color reduces

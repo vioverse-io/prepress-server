@@ -126,6 +126,7 @@ app.post('/api/jobs', async (req, res) => {
         jobReq.input('lastModifiedBy', j.lastModifiedBy || '');
         jobReq.input('activeComponentId', j.activeComponentId || '');
         jobReq.input('activeDepartment', j.activeDepartment || 'prepress');
+        jobReq.input('status', j.status || 'new');
         jobReq.input('duplicatedFrom', j.duplicatedFrom || '');
         jobReq.input('deletionLog', JSON.stringify(j.deletionLog || []));
         await jobReq.query(`
@@ -133,12 +134,12 @@ app.post('/api/jobs', async (req, res) => {
                 assignedToPrepress, signoffDueDatePrepress, signoffDueTimePrepress,
                 assignedToTechservices, signoffDueDateTechservices, signoffDueTimeTechservices,
                 version, dateCreated, createdBy, lastModified, lastModifiedBy,
-                activeComponentId, activeDepartment, duplicatedFrom, deletionLog, rowVersion)
+                activeComponentId, activeDepartment, status, duplicatedFrom, deletionLog, rowVersion)
             VALUES (@id, @jobNumber, @jobDescription, @clientName, @csrName,
                 @assignedToPrepress, @signoffDueDatePrepress, @signoffDueTimePrepress,
                 @assignedToTechservices, @signoffDueDateTechservices, @signoffDueTimeTechservices,
                 @version, @dateCreated, @createdBy, @lastModified, @lastModifiedBy,
-                @activeComponentId, @activeDepartment, @duplicatedFrom, @deletionLog, 1)
+                @activeComponentId, @activeDepartment, @status, @duplicatedFrom, @deletionLog, 1)
         `);
 
         // Insert components
@@ -186,6 +187,7 @@ app.put('/api/jobs/:id', async (req, res) => {
         upd.input('headerModifiedBy', j.headerModifiedBy || '');
         upd.input('activeComponentId', j.activeComponentId || '');
         upd.input('activeDepartment', j.activeDepartment || 'prepress');
+        upd.input('status', j.status || 'new');
         upd.input('duplicatedFrom', j.duplicatedFrom || '');
         upd.input('deletionLog', JSON.stringify(j.deletionLog || []));
 
@@ -208,6 +210,7 @@ app.put('/api/jobs/:id', async (req, res) => {
                 headerModifiedBy = @headerModifiedBy,
                 activeComponentId = @activeComponentId,
                 activeDepartment = @activeDepartment,
+                status = @status,
                 duplicatedFrom = @duplicatedFrom,
                 deletionLog = @deletionLog,
                 rowVersion = rowVersion + 1

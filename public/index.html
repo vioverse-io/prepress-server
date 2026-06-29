@@ -186,6 +186,11 @@
         </div>
       </div>
     </div>
+    <span class="job-field-divider"></span>
+    <div class="job-field job-field--status">
+      <span class="job-field-label">Status</span>
+      <span class="status-header-trigger" id="headerStatusBadge" onclick="openStatusPopover(this, currentJobId)"></span>
+    </div>
     <div style="flex:1;"></div>
     <div class="readonly-badge" id="readonlyBadge" style="display:none;">READ-ONLY</div>
     <div class="required-badge" id="requiredBadge"></div>
@@ -280,60 +285,78 @@
     <!-- View tabs -->
     <div class="view-tabs" id="viewTabs"></div>
 
-    <!-- Filter bar -->
-    <div class="filter-bar" id="filterBar">
-      <span class="filter-label">Filter</span>
+    <!-- Controls block (Show row + Filter row) -->
+    <div class="controls-block" id="controlsBlock">
+      <!-- Row 1: Show + Group (segmented pills) -->
+      <div class="controls-grid">
+        <span class="ctrl-label">Show</span>
+        <div class="seg-group fill" id="showSegGroup"></div>
+        <div class="group-cell">
+          <span class="ctrl-divider"></span>
+          <span class="ctrl-label">Group</span>
+          <div class="seg-group" id="groupSegGroup"></div>
+        </div>
+        <div></div>
+      </div>
 
-      <button class="filter-pill active" data-dept="all" onclick="setDeptFilter('all')">All Depts</button>
-      <button class="filter-pill dept-prepress" data-dept="prepress" onclick="setDeptFilter('prepress')">Prepress</button>
-      <button class="filter-pill dept-ts" data-dept="techservices" onclick="setDeptFilter('techservices')">Tech Services</button>
-
-      <span class="filter-sep"></span>
-
-      <div class="filter-btn" id="filterCSRBtn" onclick="toggleFilterDropdown(event, 'filterCSRDropdown')">
-        CSR <span class="filter-count-badge" id="filterCSRCount" style="display:none"></span> <span class="filter-arrow">&#9662;</span>
-        <div class="filter-dropdown" id="filterCSRDropdown" onclick="event.stopPropagation()">
-          <input type="text" class="filter-dropdown-search" placeholder="Search CSRs..." oninput="filterDropdownList(this)">
-          <div class="filter-dropdown-list" id="filterCSRList"></div>
-          <div class="filter-dropdown-actions">
-            <button onclick="clearFilterDropdown('CSR')">Clear all</button>
-            <button class="apply-btn" onclick="applyFilterDropdown('CSR')">Apply</button>
+      <!-- Row 2: inline-text filters -->
+      <div class="filter-row">
+        <span class="ctrl-label">Status</span>
+        <div class="inline-seg" id="statusSegGroup"></div>
+        <span class="filter-rule"></span>
+        <span class="ctrl-label">Dept</span>
+        <div class="inline-seg" id="deptSegGroup"></div>
+        <span class="filter-rule"></span>
+        <div class="inline-trigger" id="filterCSRBtn" onclick="toggleFilterDropdown(event, 'filterCSRDropdown')">
+          <span class="lbl" data-label="CSR"><span>CSR</span></span>
+          <span class="trigger-chevron">&#9662;</span>
+          <div class="filter-dropdown" id="filterCSRDropdown" onclick="event.stopPropagation()">
+            <input type="text" class="filter-dropdown-search" placeholder="Search CSRs..." oninput="filterDropdownList(this)">
+            <div class="filter-dropdown-list" id="filterCSRList"></div>
+            <div class="filter-dropdown-actions">
+              <button onclick="clearFilterDropdown('CSR')">Clear all</button>
+              <button class="apply-btn" onclick="applyFilterDropdown('CSR')">Apply</button>
+            </div>
+          </div>
+        </div>
+        <span class="inline-dot">&middot;</span>
+        <div class="inline-trigger" id="filterAssigneeBtn" onclick="toggleFilterDropdown(event, 'filterAssigneeDropdown')">
+          <span class="lbl" data-label="Assignee"><span>Assignee</span></span>
+          <span class="trigger-chevron">&#9662;</span>
+          <div class="filter-dropdown" id="filterAssigneeDropdown" onclick="event.stopPropagation()">
+            <input type="text" class="filter-dropdown-search" placeholder="Search assignees..." oninput="filterDropdownList(this)">
+            <div class="filter-dropdown-list" id="filterAssigneeList"></div>
+            <div class="filter-dropdown-actions">
+              <button onclick="clearFilterDropdown('Assignee')">Clear all</button>
+              <button class="apply-btn" onclick="applyFilterDropdown('Assignee')">Apply</button>
+            </div>
+          </div>
+        </div>
+        <span class="inline-dot">&middot;</span>
+        <div class="inline-trigger" id="filterClientBtn" onclick="toggleFilterDropdown(event, 'filterClientDropdown')">
+          <span class="lbl" data-label="Client"><span>Client</span></span>
+          <span class="trigger-chevron">&#9662;</span>
+          <div class="filter-dropdown" id="filterClientDropdown" onclick="event.stopPropagation()">
+            <input type="text" class="filter-dropdown-search" placeholder="Search clients..." oninput="filterDropdownList(this)">
+            <div class="filter-dropdown-list" id="filterClientList"></div>
+            <div class="filter-dropdown-actions">
+              <button onclick="clearFilterDropdown('Client')">Clear all</button>
+              <button class="apply-btn" onclick="applyFilterDropdown('Client')">Apply</button>
+            </div>
+          </div>
+        </div>
+        <span class="filter-rule"></span>
+        <div class="inline-trigger updated-trigger" id="updatedControl" onclick="toggleFilterDropdown(event, 'updatedDropdown')">
+          <span class="lbl" data-label="Updated"><span id="updatedLabel">Updated</span></span>
+          <span class="trigger-chevron">&#9662;</span>
+          <div class="filter-dropdown" id="updatedDropdown" onclick="event.stopPropagation()">
+            <div class="filter-dropdown-list" id="updatedList"></div>
           </div>
         </div>
       </div>
 
-      <div class="filter-btn" id="filterAssigneeBtn" onclick="toggleFilterDropdown(event, 'filterAssigneeDropdown')">
-        Assignee <span class="filter-count-badge" id="filterAssigneeCount" style="display:none"></span> <span class="filter-arrow">&#9662;</span>
-        <div class="filter-dropdown" id="filterAssigneeDropdown" onclick="event.stopPropagation()">
-          <input type="text" class="filter-dropdown-search" placeholder="Search assignees..." oninput="filterDropdownList(this)">
-          <div class="filter-dropdown-list" id="filterAssigneeList"></div>
-          <div class="filter-dropdown-actions">
-            <button onclick="clearFilterDropdown('Assignee')">Clear all</button>
-            <button class="apply-btn" onclick="applyFilterDropdown('Assignee')">Apply</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="filter-btn" id="filterClientBtn" onclick="toggleFilterDropdown(event, 'filterClientDropdown')">
-        Client <span class="filter-count-badge" id="filterClientCount" style="display:none"></span> <span class="filter-arrow">&#9662;</span>
-        <div class="filter-dropdown" id="filterClientDropdown" onclick="event.stopPropagation()">
-          <input type="text" class="filter-dropdown-search" placeholder="Search clients..." oninput="filterDropdownList(this)">
-          <div class="filter-dropdown-list" id="filterClientList"></div>
-          <div class="filter-dropdown-actions">
-            <button onclick="clearFilterDropdown('Client')">Clear all</button>
-            <button class="apply-btn" onclick="applyFilterDropdown('Client')">Apply</button>
-          </div>
-        </div>
-      </div>
-
-      <span class="filter-sep"></span>
-
-      <button class="filter-pill" data-time="today" onclick="setTimeFilter('today')">Today</button>
-      <button class="filter-pill" data-time="week" onclick="setTimeFilter('week')">This Week</button>
-      <button class="filter-pill" data-time="month" onclick="setTimeFilter('month')">This Month</button>
-      <button class="filter-pill active" data-time="all" onclick="setTimeFilter('all')">All Time</button>
-
-      <button class="filter-clear-pill" id="clearFiltersBtn" onclick="clearLandingFilters()" style="display:none">Clear Filters &times;</button>
+      <!-- Active filter chips -->
+      <div class="active-chips-row" id="activeChips" style="display:none;"></div>
     </div>
 
     <!-- Bulk action bar (hidden until checkboxes are selected) -->
@@ -354,9 +377,9 @@
             <th onclick="setSortColumn('clientName')">Client <span class="sort-arrow" id="sort-clientName"></span></th>
             <th onclick="setSortColumn('jobDescription')">Project <span class="sort-arrow" id="sort-jobDescription"></span></th>
             <th onclick="setSortColumn('csrName')">CSR <span class="sort-arrow" id="sort-csrName"></span></th>
-            <th onclick="setSortColumn('assignee')">Assigned <span class="sort-arrow" id="sort-assignee"></span></th>
-            <th onclick="setSortColumn('lastModified')">Modified <span class="sort-arrow active" id="sort-lastModified">&#9662;</span></th>
-            <th onclick="setSortColumn('status')">Status <span class="sort-arrow" id="sort-status"></span></th>
+            <th onclick="setSortColumn('assignee')">Assigned <span class="sort-arrow" id="sort-assignee"></span><span class="assign-toggle assign-toggle-cs" id="assignToggleCS" onclick="event.stopPropagation(); setAssignedDept('cs')" title="Creative Services (Prepress)">CS</span><span class="assign-toggle assign-toggle-ts inactive" id="assignToggleTS" onclick="event.stopPropagation(); setAssignedDept('ts')" title="Tech Services">TS</span></th>
+            <th onclick="setSortColumn('due')">Signoff Due <span class="sort-arrow active" id="sort-due">&#9652;</span></th>
+            <th onclick="setSortColumn('status')">Status</th>
             <th>Depts</th>
           </tr>
         </thead>
@@ -601,7 +624,7 @@
   </div>
 </div>
 
-      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
       <div class="form-group" id="componentsSelectGroup">
         <label>Components (select all that apply)</label>
         <div class="components-select" id="componentsSelect"></div>
@@ -726,7 +749,7 @@
           "3AM Innovations","AAA","AAA Central Penn","AAA Hoosiers","AAA Hudson Valley","AAA Minneapolis","AAA North Penn","AAA Northampton","AAA Northway","AAA Reading Berks","AAA Schuylkill","AAA Shelby County","Akron Rule","Ad Specialty Solutions LLC","Adirondack Explorer","AIIM","Albany Law School","Al Sigl","Allied Motion","AMC","American Atheist","Amherst Memorial Chapel","Amplified","And More Marketing","Apex Dental","ARIC","ArtPark","B and L","Beaches","Berenson","Bills Foundation","BMG","Bob Weaver Motorsports","Bonadio Group","BPO","Brochures Unlimited","Buffalo Academyof Science","Buffalo Audubon Society","Buffalo Bills","Buffalo Canvas","BuffaloCleaning","Buffalo Fine Arts","Buffalo History Museum","Buffalo Museum of Science","Buffalo Oral Surgery","Buffalo Regals Hockey","Buffalo Sabres","Burchfield Penney","Burgio & Campofelice","Cambria Fire","Campbell Travel","CanisusCollege","CarX","Catholic Charities","Catholic Health System","CCFCS","Center for Inquiry Periodical","Charlie Butcher","Childrens Hospital Fdn","City Action","CMI","Coast Technology","Community Bank","Command Direct","Compu-Mail","CPS","CTG Group","Data-Mation","Dave Cacciatore","Delaware North","Delta Sonic","DesignNY","DiCamillo","DiMinos Tops","Direct Security","Dixon Schwabl","East House","Elderwood","EnSol","Erie 1 Boces","ERW","Estiator","Evergreen Health","EZFlats","Fastenal","First Amherst","Foodlink","FR Remley","Freed Maxick","Frontier","Garrett Leather","Gelia","GEVA","Getzville Fire Company","Global Indemnity","Grand Island CSD","Grand Island Chamber","GreenKnight Landscaping","Hope Rising","Horizon Health","Hospice","Hub Scrap","Hudson Park River Trust","ICC Commonwealth","Independent Health","Independent Health Foundation","Independent Health Fulfillment","Independent Health Self Funded Services","JFD Sports","JLawrence","Junior League","Kahana Feld","Kelleher Law","Ken Ton Family Support","Kingdom Bound","Krown Rust Control","Krystal Klear","KSV","Lancaster Fire","Lancaster Football","LewistonCouncil on the Arts","Lewiston Fire Co","Lewiston Kiwanis","LS&S","Luminus","Main Place Liberty","Manzella","Massena Hospital","Microhealth","Mr Smith Agency","NAMI","Napolis","Natures Lawn","Neighbor to Neighbor","NERG","NewsMax","NF City Market","NFRRS","NFTA","Night Out","Niagara Cty Deputy Sheriff","Niagara Falls Country Club","Niagara Falls Public Library","Niagara Falls Sports Hall Of Fame","Niagara Hospice","Niagara Pumpkin","Niagara University","Northtown Automotive","NTS","NYSWA","OLV","Orleans County","Park Ave","PDM","Pediatric Specialty Care","PGP","Print2Web","Proforma","Propitious Media","Razorfish","Revive Wesleyan","Ricotta & Ricotta","RMF","Robert Garey","Roswell","Roy-Hart","Sacred Heart","Safetec","SaveonSP","Seneca Gaming","Seneca Niagara","Service Collaboration WNY","Short N Numbers","Soflo Clean Water","Spaghetti & Meatballs","St. Adalberts","St. Francis Prep","St. Lawrence","Stannp","Sunday Driver","SUNY BuffState","Switzer Precision","TASC","Taste of Buffalo","The Chapel","The Martin Group","Tim Thomas","Tops Markets","Transitowne","Twin District","UB","UB Architecture","UB Campus Dining","UB Career Design","UB Orientation","UB School Of Nursing","University Libraries","Unreal Digital","USA Insulation","Veterans Outreach Center","Virginia Wireless","Vivrelle","Walden Galleria","Western Division FCU","West Seneca West","Wilcor","Williamsville North","Wind Spirit People And Places","Wireless Infrastructure","WNY Heritage","WNYIL","YMCA"
         ]'></div>
       </div></div>
-      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
       <div class="form-group">
         <label>Assigned to (Prepress)</label>
         <select id="editAssignedToPrepress" class="assignee-select">
@@ -1254,15 +1277,31 @@
 
       <section class="help-section">
         <h3>Landing Page</h3>
-        <p>A sortable, filterable table of all your jobs. Columns: Job#, Client, Project, CSR, Assigned, Modified, Status, Depts.</p>
+        <p>A sortable, filterable table of all your jobs. Columns: Job#, Client, Project, CSR, Assigned, Signoff Due, Status, Depts.</p>
         <ul>
           <li><strong>New Work Order</strong> creates a job.</li>
           <li>Click any row to open it.</li>
-          <li><strong>Search</strong> filters across job number, client, CSR, and project.</li>
-          <li><strong>Filters</strong> -- narrow by department, CSR, assignee, client, or time range (Today / This Week / This Month).</li>
           <li><strong>My Jobs / All Jobs</strong> tabs -- "My Jobs" shows only jobs assigned to you.</li>
-          <li>Click any column header to sort.</li>
+          <li><strong>Search</strong> filters across job number, client, CSR, and project.</li>
         </ul>
+        <h4>Controls</h4>
+        <ul>
+          <li><strong>Show row</strong> -- quick views: All, Overdue (red count), Due Today (amber count). Counts reflect all active jobs regardless of filters.</li>
+          <li><strong>Group</strong> -- group rows by None, Status, or CSR.</li>
+          <li><strong>Status</strong> -- filter by status: All, New, In Progress, On Hold, Complete, Cancelled.</li>
+          <li><strong>Dept</strong> -- filter by department: All, Prepress, Tech Services.</li>
+          <li><strong>CSR / Assignee / Client</strong> -- multi-select dropdowns. Active selections appear as chips below the controls.</li>
+          <li><strong>Updated</strong> -- filter by last modified time: Today, This Week, This Month.</li>
+        </ul>
+        <h4>Columns</h4>
+        <ul>
+          <li><strong>Assigned</strong> -- shows one department's assignee at a time. Click <strong>CS</strong> or <strong>TS</strong> in the header to switch.</li>
+          <li><strong>Signoff Due</strong> -- shows the earlier of the two department due dates. Red "OVERDUE" tag for past-due jobs, amber "DUE SOON" within 12 hours. Complete and Cancelled jobs show muted text.</li>
+          <li><strong>Status</strong> -- click the status badge on any row to change it (New, In Progress, On Hold, Complete, Cancelled).</li>
+          <li><strong>Depts</strong> -- colored dots showing which departments have content.</li>
+        </ul>
+        <h4>Bulk Actions</h4>
+        <p>Use the checkboxes on each row (or the select-all header checkbox) to select multiple jobs, then Archive or Delete them in bulk.</p>
         <p>Archived jobs and saved templates appear below the table.</p>
       </section>
 
@@ -1275,7 +1314,7 @@
         <h3>The Job Screen</h3>
 
         <h4>Header</h4>
-        <p>Shows Job#, Customer, CSR, Component, and Version. Click any field to edit it inline. Version has a picker and a <strong>+</strong> button to auto-increment (A01, A02, A03...).</p>
+        <p>Shows Job#, Customer, CSR, Component, Version, and Status. Click any field to edit it inline. Version has a picker and a <strong>+</strong> button to auto-increment (A01, A02, A03...). Click the status badge to change it (New, In Progress, On Hold, Complete, Cancelled).</p>
 
         <h4>Department Tabs</h4>
         <p>Two tabs above the checklist: <strong>Prepress</strong> and <strong>Tech Services</strong>. Click a tab to switch. Each department has its own checklist fields and its own instructions editor. They save independently.</p>
@@ -1333,7 +1372,7 @@
           <tr><td><strong>Book</strong></td><td>This guide</td></tr>
           <tr><td><strong>Moon / Sun</strong></td><td>Dark mode toggle</td></tr>
           <tr><td><strong>Search</strong></td><td>Highlights matching checklist fields, auto-expands collapsed sections</td></tr>
-          <tr><td><strong>Profile</strong></td><td>Shows your Windows login name and photo (top right circle)</td></tr>
+          <tr><td><strong>Profile</strong></td><td>Shows your Windows login name (detected automatically) and photo (top right circle)</td></tr>
         </table>
       </section>
 
@@ -1381,7 +1420,7 @@
 
       <section class="help-section">
         <h3>Multi-User</h3>
-        <p>This app runs on the company LAN. Multiple people can view and edit jobs at the same time. If someone else edits a job you have open, you'll see a conflict message on save. Use <strong>Refresh</strong> on the landing page to pull the latest data from the server.</p>
+        <p>This app runs on the company LAN. Multiple people can view and edit jobs at the same time. If someone else edits a job you have open, you'll see a "Job updated on the server" popup with a <strong>Reload job</strong> button. Use <strong>Refresh</strong> on the landing page to pull the latest data from the server.</p>
       </section>
 
       <section class="help-section help-section-limits">
@@ -1412,6 +1451,15 @@
     <div style="display:flex;gap:8px;margin-top:var(--space-md);">
       <button class="profile-save-btn" style="flex:1;" onclick="submitAdminPassword()">Confirm</button>
       <button class="profile-save-btn" style="flex:1;background:var(--surface-sunken);color:var(--ink-soft);" onclick="cancelAdminPassword()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="reloadModal" class="modal">
+  <div class="modal-content reload-modal-content">
+    <p class="reload-modal-title">Job updated on the server.</p>
+    <div class="modal-buttons">
+      <button class="btn-save" onclick="confirmReloadModal()">Reload job</button>
     </div>
   </div>
 </div>

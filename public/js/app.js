@@ -45,7 +45,7 @@
         return out;
     });
     const PIECE_FORMAT_OPTIONS = ["6x9.5\u2033 Envelope", "9x12 Envelope", "A7 Envelope", "Booklet", "Buckslip", "Label", "Letter", "No. 9 BRE Envelope", "No. 10 Envelope", "No. 10 Envelope Window", "Postcard", "Remit", "Self-Mailer", "Sticker"];
-    const CSR_NAMES = ["Brandi Czjkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"];
+    const CSR_NAMES = ["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"];
     // Flat Size dropdown options — standard vs envelope
     const FLAT_SIZES_STANDARD = [
         "3.5\u2033 x 5\u2033",
@@ -940,10 +940,14 @@
     let landingViewTab = 'all'; // 'my' or 'all'
     let landingCurrentPage = 1;
     let landingPageSize = 10;
-    let landingSortColumn = 'lastModified';
-    let landingSortDir = 'desc';
+    let landingSortColumn = 'due';
+    let landingSortDir = 'asc';
     let landingDeptFilter = 'all';
     let landingTimeFilter = 'all';
+    let landingStatusFilter = 'all';
+    let landingQuickFilter = 'all';
+    let landingGroupBy = 'none';
+    let landingAssignedDept = 'cs';
     let landingSelectedCSRs = [];
     let landingSelectedAssignees = [];
     let landingSelectedClients = [];
@@ -958,25 +962,43 @@
     function isMyJob(job) {
         const me = getUserName().toLowerCase();
         if (!me) return false;
-        return (job.assignedToPrepress || '').toLowerCase() === me ||
-               (job.assignedToTechservices || '').toLowerCase() === me;
+        return (job.createdBy || '').toLowerCase() === me;
     }
 
     function setDeptFilter(dept) {
         landingDeptFilter = dept;
         landingCurrentPage = 1;
-        document.querySelectorAll('#filterBar .filter-pill[data-dept]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.dept === dept);
-        });
         applyLandingFilters();
     }
 
     function setTimeFilter(time) {
         landingTimeFilter = time;
         landingCurrentPage = 1;
-        document.querySelectorAll('#filterBar .filter-pill[data-time]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.time === time);
-        });
+        // Close the Updated dropdown
+        document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
+        applyLandingFilters();
+    }
+
+    function setStatusFilter(status) {
+        landingStatusFilter = status;
+        landingCurrentPage = 1;
+        applyLandingFilters();
+    }
+
+    function setQuickFilter(q) {
+        landingQuickFilter = (landingQuickFilter === q && q !== 'all') ? 'all' : q;
+        landingCurrentPage = 1;
+        applyLandingFilters();
+    }
+
+    function setGroupBy(g) {
+        landingGroupBy = g;
+        landingCurrentPage = 1;
+        applyLandingFilters();
+    }
+
+    function setAssignedDept(dept) {
+        landingAssignedDept = dept;
         applyLandingFilters();
     }
 
@@ -1021,7 +1043,7 @@
     }
 
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.filter-btn')) {
+        if (!e.target.closest('.inline-trigger')) {
             document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
         }
     });
@@ -1086,19 +1108,28 @@
         const list = document.getElementById(listId);
         if (!list) return;
         const selected = [...list.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value);
+        const prev = type === 'Assignee' ? [...landingSelectedAssignees] : [];
         if (type === 'CSR') landingSelectedCSRs = selected;
         else if (type === 'Assignee') landingSelectedAssignees = selected;
         else landingSelectedClients = selected;
 
+        // Auto-switch assigned column dept when adding an assignee
+        if (type === 'Assignee') {
+            const added = selected.filter(v => !prev.includes(v));
+            if (added.length > 0) {
+                const lastAdded = added[added.length - 1];
+                const prRoster = (window.DEPT_REGISTRY && window.DEPT_REGISTRY.prepress && window.DEPT_REGISTRY.prepress.ASSIGNEE_OPTIONS) || [];
+                const tsRoster = (window.DEPT_REGISTRY && window.DEPT_REGISTRY.techservices && window.DEPT_REGISTRY.techservices.ASSIGNEE_OPTIONS) || [];
+                if (prRoster.includes(lastAdded)) landingAssignedDept = 'cs';
+                else if (tsRoster.includes(lastAdded)) landingAssignedDept = 'ts';
+            }
+        }
+
         const btn = document.getElementById('filter' + type + 'Btn');
-        const countBadge = document.getElementById('filter' + type + 'Count');
         if (selected.length > 0) {
-            btn.classList.add('has-selection');
-            countBadge.style.display = '';
-            countBadge.textContent = selected.length;
+            if (btn) btn.classList.add('has-selection');
         } else {
-            btn.classList.remove('has-selection');
-            countBadge.style.display = 'none';
+            if (btn) btn.classList.remove('has-selection');
         }
         document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
         landingCurrentPage = 1;
@@ -1127,17 +1158,105 @@
     }
 
     // ── Job status helper ──
+    const STATUS_MAP = {
+        'new':         { label: 'New',         cls: 'new' },
+        'in-progress': { label: 'In Progress', cls: 'in-progress' },
+        'on-hold':     { label: 'On Hold',     cls: 'on-hold' },
+        'complete':    { label: 'Complete',     cls: 'complete' },
+        'cancelled':   { label: 'Cancelled',   cls: 'cancelled' }
+    };
+    const STATUS_KEYS = Object.keys(STATUS_MAP);
+
     function getJobStatusLabel(job) {
-        if (!job.components || !job.components.length) return { label: 'New', cls: 'new' };
+        // Stored status takes priority (explicit CSR-set)
+        if (job.status && STATUS_MAP[job.status]) {
+            return STATUS_MAP[job.status];
+        }
+        // Derived fallback for legacy jobs without a stored status column
+        if (!job.components || !job.components.length) return STATUS_MAP['new'];
         const reqStatus = getRequiredStatusForJob(job);
-        if (reqStatus.allComplete) return { label: 'Complete', cls: 'complete' };
+        if (reqStatus.allComplete) return STATUS_MAP['complete'];
         const hasContent = job.components.some(c => {
             return (c.instructions_prepress && c.instructions_prepress !== '<p><br></p>') ||
                    (c.instructions_techservices && c.instructions_techservices !== '<p><br></p>') ||
                    (c.checkboxes && Object.values(c.checkboxes).some(v => v === true));
         });
-        if (hasContent) return { label: 'In progress', cls: 'in-progress' };
-        return { label: 'New', cls: 'new' };
+        if (hasContent) return STATUS_MAP['in-progress'];
+        return STATUS_MAP['new'];
+    }
+
+    // ── Due-date helpers (landing v2) ──
+    function parseDueDateTime(dateStr, timeStr) {
+        if (!dateStr) return null;
+        const p = dateStr.split('-').map(Number);
+        let hh = 17, mm = 0;
+        if (timeStr) {
+            const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (m) { hh = Number(m[1]) % 12 + (/PM/i.test(m[3]) ? 12 : 0); mm = Number(m[2]); }
+        }
+        return new Date(p[0], (p[1] || 1) - 1, p[2] || 1, hh, mm);
+    }
+
+    function getJobDue(job) {
+        const a = parseDueDateTime(job.signoffDueDatePrepress, job.signoffDueTimePrepress);
+        const b = parseDueDateTime(job.signoffDueDateTechservices, job.signoffDueTimeTechservices);
+        const ds = [a, b].filter(Boolean);
+        if (!ds.length) return null;
+        return new Date(Math.min.apply(null, ds.map(d => d.getTime())));
+    }
+
+    function isTerminalStatus(cls) {
+        return cls === 'complete' || cls === 'cancelled';
+    }
+
+    function isJobOverdue(job) {
+        const due = getJobDue(job);
+        return !!due && due < new Date() && !isTerminalStatus(getJobStatusLabel(job).cls);
+    }
+
+    function isJobDueToday(job) {
+        const due = getJobDue(job);
+        if (!due || isTerminalStatus(getJobStatusLabel(job).cls)) return false;
+        const now = new Date();
+        return due >= now && due.toDateString() === now.toDateString();
+    }
+
+    function formatDueParts(due) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let h = due.getHours();
+        const ap = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        const t = h + ':' + String(due.getMinutes()).padStart(2, '0') + ' ' + ap;
+        return { date: months[due.getMonth()] + ' ' + due.getDate(), time: t };
+    }
+
+    function renderDueCell(job) {
+        const due = getJobDue(job);
+        if (!due) return '<span class="due-time">--</span>';
+        const status = getJobStatusLabel(job);
+        const p = formatDueParts(due);
+        let modifier = '';
+        let tag = '';
+        if (isTerminalStatus(status.cls)) {
+            modifier = ' complete';
+        } else if (isJobOverdue(job)) {
+            modifier = ' overdue';
+            tag = '<span class="due-tag due-tag-overdue">OVERDUE</span>';
+        } else if (isJobDueToday(job) && (due - new Date()) < 12 * 3600000) {
+            modifier = ' due-soon';
+            tag = '<span class="due-tag due-tag-soon">DUE SOON</span>';
+        } else if (isJobDueToday(job)) {
+            modifier = ' due-today';
+        }
+        return '<span class="due-date' + modifier + '">' + escHtml(p.date) + '</span>' +
+            '<span class="due-time' + modifier + '">' + escHtml(p.time) + tag + '</span>';
+    }
+
+    // ── Group-by helper ──
+    function groupKeyFor(job) {
+        if (landingGroupBy === 'status') return getJobStatusLabel(job).label;
+        if (landingGroupBy === 'csr') return job.csrName || '(no CSR)';
+        return '';
     }
 
     // ── Dept dots helper ──
@@ -1161,13 +1280,16 @@
             '</div>';
     }
 
-    // ── Assignee display helper ──
+    // ── Assignee display helper (dept-aware) ──
     function getAssigneeDisplay(job) {
-        const assignee = job.assignedToPrepress || job.assignedToTechservices || '';
-        if (!assignee) return '--';
-        const parts = assignee.trim().split(/\s+/);
+        const name = landingAssignedDept === 'ts'
+            ? (job.assignedToTechservices || '')
+            : (job.assignedToPrepress || '');
+        if (!name) return '';
+        const parts = name.trim().split(/\s+/);
         const initials = parts.map(p => p[0]).join('').toUpperCase().slice(0, 3);
-        return '<span class="assignee-avatar">' + escHtml(initials) + '</span>' + escHtml(assignee);
+        const ringClass = landingAssignedDept === 'ts' ? ' ring-ts' : '';
+        return '<span class="assignee-avatar' + ringClass + '">' + escHtml(initials) + '</span>' + escHtml(name);
     }
 
     // ── Format modified date ──
@@ -1195,9 +1317,14 @@
             case 'clientName': return (job.clientName || '').toLowerCase();
             case 'jobDescription': return (job.jobDescription || '').toLowerCase();
             case 'csrName': return (job.csrName || '').toLowerCase();
-            case 'assignee': return (job.assignedToPrepress || job.assignedToTechservices || '').toLowerCase();
+            case 'assignee': return ((landingAssignedDept === 'ts' ? job.assignedToTechservices : job.assignedToPrepress) || '').toLowerCase();
             case 'lastModified': return new Date(job.lastModified || job.dateCreated || 0).getTime();
             case 'status': return getJobStatusLabel(job).label;
+            case 'due': {
+                if (isTerminalStatus(getJobStatusLabel(job).cls)) return 9e15;
+                const due = getJobDue(job);
+                return due ? due.getTime() : 8e15;
+            }
             default: return '';
         }
     }
@@ -1207,6 +1334,7 @@
         const tbody = document.getElementById('jobTableBody');
         if (!tbody) return;
 
+        // Update sort arrows
         document.querySelectorAll('.sort-arrow').forEach(el => {
             el.classList.remove('active');
             el.innerHTML = '';
@@ -1217,10 +1345,16 @@
             activeArrow.innerHTML = landingSortDir === 'asc' ? '&#9652;' : '&#9662;';
         }
 
+        // Update CS/TS toggle pills
+        const csBtn = document.getElementById('assignToggleCS');
+        const tsBtn = document.getElementById('assignToggleTS');
+        if (csBtn) csBtn.classList.toggle('inactive', landingAssignedDept !== 'cs');
+        if (tsBtn) tsBtn.classList.toggle('inactive', landingAssignedDept !== 'ts');
+
         if (jobs.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" class="no-jobs-table-message">' +
                 (landingViewTab === 'my'
-                    ? 'No jobs assigned to you.<br><span style="font-size:11px;color:var(--ink-muted);">Jobs appear here when your name matches the Assigned To field.</span>'
+                    ? 'No jobs created by you yet.<br><span class="no-jobs-subline">Jobs you create are filed here automatically. Switch to All Jobs to see everything on the board.</span>'
                     : 'No matching jobs') +
                 '</td></tr>';
             document.getElementById('paginationControls').innerHTML = '';
@@ -1228,29 +1362,41 @@
         }
 
         const me = getUserName().toLowerCase();
-        const rows = jobs.map(j => {
+        let lastGroupKey = null;
+        const rowsHtml = [];
+        jobs.forEach(j => {
+            // Insert group header row if grouping is active
+            if (landingGroupBy !== 'none') {
+                const gk = groupKeyFor(j);
+                if (gk !== lastGroupKey) {
+                    lastGroupKey = gk;
+                    rowsHtml.push('<tr class="group-header-row"><td colspan="9"><span class="group-header-label">' + escHtml(gk) + '</span></td></tr>');
+                }
+            }
+
             const mine = me && isMyJob(j) ? ' mine' : '';
             const status = getJobStatusLabel(j);
             const version = j.version ? ' <span class="version-badge">' + escHtml(j.version) + '</span>' : '';
             const desc = j.jobDescription ? escHtml(j.jobDescription) : '';
             const assigneeHtml = getAssigneeDisplay(j);
             const deptDots = getJobDeptDots(j);
-            const modified = formatModifiedDate(j.lastModified || j.dateCreated);
+            const dueHtml = renderDueCell(j);
 
-            return '<tr class="' + mine.trim() + '" onclick="loadJob(\'' + j.id + '\')">' +
+            rowsHtml.push('<tr class="' + mine.trim() + '" onclick="loadJob(\'' + j.id + '\')">' +
                 '<td class="col-select" onclick="event.stopPropagation()"><input type="checkbox" class="table-row-check" data-job-id="' + j.id + '" onchange="updateBulkBar()"></td>' +
                 '<td class="col-job">' + escHtml(j.jobNumber || '') + version + '</td>' +
                 '<td class="col-client">' + escHtml(j.clientName || '') + '</td>' +
                 '<td class="col-desc">' + desc + '</td>' +
                 '<td class="col-csr">' + escHtml(j.csrName || '') + '</td>' +
                 '<td class="col-assignee">' + assigneeHtml + '</td>' +
-                '<td class="col-modified">' + modified + '</td>' +
-                '<td class="col-status"><span class="status-badge ' + status.cls + '">' + status.label + '</span></td>' +
+                '<td class="col-due">' + dueHtml + '</td>' +
+                '<td class="col-status" onclick="event.stopPropagation(); openStatusPopover(this.querySelector(\'.status-badge\'), \'' + j.id + '\')">' +
+                    '<span class="status-badge ' + status.cls + '">' + status.label + '</span></td>' +
                 '<td>' + deptDots + '</td>' +
-                '</tr>';
-        }).join('');
+                '</tr>');
+        });
 
-        tbody.innerHTML = rows;
+        tbody.innerHTML = rowsHtml.join('');
     }
 
     // ── Pagination rendering ──
@@ -1365,14 +1511,13 @@
                 body: JSON.stringify(payload)
             });
             if (res.status === 409) {
-                alert('This job was updated by someone else. Reloading to see their changes.');
-                await refreshJobs();
-                if (currentJobId) loadJob(currentJobId);
+                showReloadModal();
                 return false;
             }
             if (!res.ok) throw new Error('Failed to save job');
             const data = await res.json();
             rowVersions[job.id] = data.rowVersion;
+            job.rowVersion = data.rowVersion;
             return true;
         });
     }
@@ -1393,14 +1538,13 @@
                 body: JSON.stringify(payload)
             });
             if (res.status === 409) {
-                alert('This job was updated by someone else. Reloading to see their changes.');
-                await refreshJobs();
-                if (currentJobId) loadJob(currentJobId);
+                showReloadModal();
                 return false;
             }
             if (!res.ok) throw new Error('Failed to save component');
             const data = await res.json();
             rowVersions[job.id] = data.rowVersion;
+            job.rowVersion = data.rowVersion;
             return true;
         });
     }
@@ -1503,6 +1647,7 @@
             signoffDueDateTechservices: document.getElementById('signoffDueDateTechservices').value,
             signoffDueTimeTechservices: document.getElementById('signoffDueTimeTechservices').value,
             version: '',
+            status: 'new',
             dateCreated: now,
             createdBy: getUserName(),
             lastModified: now,
@@ -2038,6 +2183,7 @@
         const comp = job.components ? job.components.find(c => c.id === currentComponentId) : null;
         document.getElementById('printComponent').textContent = comp ? comp.name : '';
         updateVersionDisplay(comp ? (comp.version || '') : '');
+        renderHeaderStatusBadge(job);
 
         // Signoff due (dept-aware: reflects active tab, same as Assigned to).
         // Hide field entirely if both date and time are empty for the active dept.
@@ -3108,28 +3254,11 @@ ${sectionsHTML}
         const comp = job?.components?.find(c => c.id === currentComponentId);
         if (!job || !comp) return;
 
-        // Warn if required fields are missing (override-able)
-        const status = getRequiredStatus();
-        if (status.missing.length > 0) {
-            const nameSpan = '<span class="qc-comp-name">' + escHtml(comp.name) + '</span>';
-            const proceed = await showWarningModal('Required fields missing for ' + nameSpan, status.missing, { type: 'required' });
-            if (!proceed) return;
-        }
-
-        // QC: catch physically impossible spec combinations before printing.
-        // Dept-scoped via the registry so TS-only jobs use TS rules (currently []).
-        const _activeDeptForPrint = window.DEPT_REGISTRY[activeDepartment] || {};
-        const _validateFn = _activeDeptForPrint.validateSummary || function () { return []; };
-        const qcWarnings = _validateFn(comp);
-        if (qcWarnings.length > 0) {
-            const proceed = await showQcWarning(comp.name, qcWarnings);
-            if (!proceed) return;
-        }
-
         // Check if a summary block exists but is stale (fields changed since last
         // generate). Dept-scoped: each dept has its own marker string and its own
         // fingerprint field on `comp`, so prepress staleness and TS staleness do
         // not cross-trigger.
+        const _activeDeptForPrint = window.DEPT_REGISTRY[activeDepartment] || {};
         const _markerStart = _activeDeptForPrint.summaryMarkerStart;
         const _fpField     = _activeDeptForPrint.summaryFingerprintField;
         const _fpFn        = _activeDeptForPrint.summaryFingerprint;
@@ -4697,9 +4826,7 @@ ${sectionsHTML}
                 body: JSON.stringify({ ...newComp, rowVersion: rowVersions[job.id], lastModifiedBy: getUserName() })
             });
             if (res.status === 409) {
-                alert('This job was updated by someone else. Reloading.');
-                await refreshJobs();
-                if (currentJobId) loadJob(currentJobId);
+                showReloadModal();
                 return;
             }
             if (!res.ok) throw new Error('Failed to create component');
@@ -4910,41 +5037,11 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         const job = jobs.find(j => j.id === currentJobId);
         if (!job || !job.components || !job.components.length) return;
 
-        // Check required fields across ALL components
-        const allMissing = [];
-        job.components.forEach(comp => {
-            const status = getRequiredStatusForComponent(comp);
-            if (status.missing.length > 0) {
-                allMissing.push(comp.name + ': ' + status.missing.join(', '));
-            }
-        });
-        if (allMissing.length > 0) {
-            const proceed = await showWarningModal('Required fields missing', allMissing, { type: 'required' });
-            if (!proceed) return;
-        }
-
-        // QC: catch physically impossible spec combinations across all components.
-        // Dept-scoped: each dept's validateSummary runs against every component.
-        const _printAllDept = window.DEPT_REGISTRY[activeDepartment] || {};
-        const _printAllValidate = _printAllDept.validateSummary || function () { return []; };
-        const allQcWarnings = [];
-        const allQcNames = [];
-        job.components.forEach(c => {
-            const w = _printAllValidate(c);
-            if (w.length > 0) {
-                allQcNames.push(c.name);
-                w.forEach(warning => allQcWarnings.push(c.name + ': ' + warning));
-            }
-        });
-        if (allQcWarnings.length > 0) {
-            const proceed = await showQcWarning(allQcNames.join(', '), allQcWarnings);
-            if (!proceed) return;
-        }
-
         // Check for stale summary blocks across all components (active dept only —
         // print-all prints whichever dept tab the user is on, so we check that).
         // Dept-scoped: uses the active dept's marker, fingerprint field, and
         // fingerprint function so prepress staleness and TS staleness do not cross.
+        const _printAllDept = window.DEPT_REGISTRY[activeDepartment] || {};
         const deptInstrKey   = 'instructions_' + activeDepartment;
         const _markerStartPA = _printAllDept.summaryMarkerStart;
         const _markerEndPA   = _printAllDept.summaryMarkerEnd;
@@ -5029,36 +5126,6 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         const jobs = getActiveJobs();
         const job = jobs.find(j => j.id === currentJobId);
         if (!job || !job.components || !job.components.length) return;
-
-        const allMissing = [];
-        job.components.forEach(comp => {
-            const status = getRequiredStatusForComponent(comp);
-            if (status.missing.length > 0) {
-                allMissing.push(comp.name + ': ' + status.missing.join(', '));
-            }
-        });
-        if (allMissing.length > 0) {
-            const proceed = await showWarningModal('Required fields missing', allMissing, { type: 'required' });
-            if (!proceed) return;
-        }
-
-        // Dept-scoped QC for the combined-print path. Mirrors the single-print and
-        // print-all paths so TS components run TS rules and prepress runs prepress rules.
-        const _combinedDept = window.DEPT_REGISTRY[activeDepartment] || {};
-        const _combinedValidate = _combinedDept.validateSummary || function () { return []; };
-        const allQcWarnings = [];
-        const allQcNames = [];
-        job.components.forEach(c => {
-            const w = _combinedValidate(c);
-            if (w.length > 0) {
-                allQcNames.push(c.name);
-                w.forEach(warning => allQcWarnings.push(c.name + ': ' + warning));
-            }
-        });
-        if (allQcWarnings.length > 0) {
-            const proceed = await showQcWarning(allQcNames.join(', '), allQcWarnings);
-            if (!proceed) return;
-        }
 
         const pages = job.components.map(comp => buildPrintHTML(job, comp, activeDepartment));
         const bodies = pages.map(html => {
@@ -5392,9 +5459,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
                 body: JSON.stringify({ ...newComp, rowVersion: rowVersions[job.id], lastModifiedBy: getUserName() })
             });
             if (res.status === 409) {
-                alert('This job was updated by someone else. Reloading.');
-                await refreshJobs();
-                if (currentJobId) loadJob(currentJobId);
+                showReloadModal();
                 return;
             }
             if (!res.ok) throw new Error('Failed to duplicate component');
@@ -5748,6 +5813,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         const allJobs = getActiveJobs();
 
         renderViewTabs(allJobs);
+        renderControlsBlock(allJobs);
 
         const me = getUserName();
         let filtered = (landingViewTab === 'my' && me) ? allJobs.filter(j => isMyJob(j)) : [...allJobs];
@@ -5775,6 +5841,11 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
                     (c.checkboxes && Object.keys(c.checkboxes).some(k => k.startsWith('techservices_') && c.checkboxes[k]))
                 ) || (j.assignedToTechservices && j.assignedToTechservices.trim());
             });
+        }
+
+        // Status filter
+        if (landingStatusFilter !== 'all') {
+            filtered = filtered.filter(j => getJobStatusLabel(j).cls === landingStatusFilter);
         }
 
         if (landingSelectedCSRs.length > 0) {
@@ -5810,6 +5881,14 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             }
         }
 
+        // Quick filter (Show row)
+        if (landingQuickFilter === 'overdue') {
+            filtered = filtered.filter(j => isJobOverdue(j));
+        } else if (landingQuickFilter === 'today') {
+            filtered = filtered.filter(j => isJobDueToday(j));
+        }
+
+        // Sort
         filtered.sort((a, b) => {
             let va = getSortValue(a, landingSortColumn);
             let vb = getSortValue(b, landingSortColumn);
@@ -5821,48 +5900,253 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             return landingSortDir === 'asc' ? cmp : -cmp;
         });
 
+        // Group pre-sort (stable -- contiguous groups, preserving column sort within)
+        if (landingGroupBy !== 'none') {
+            const statusRank = { 'New': 0, 'In Progress': 1, 'On Hold': 2, 'Complete': 3, 'Cancelled': 4 };
+            filtered.sort((a, b) => {
+                const ka = groupKeyFor(a), kb = groupKeyFor(b);
+                if (landingGroupBy === 'status') {
+                    if (statusRank[ka] !== statusRank[kb]) return statusRank[ka] - statusRank[kb];
+                } else if (ka !== kb) {
+                    return ka.localeCompare(kb);
+                }
+                return 0;
+            });
+        }
+
         const totalFiltered = filtered.length;
         const pageStart = (landingCurrentPage - 1) * landingPageSize;
         const pageSlice = filtered.slice(pageStart, pageStart + landingPageSize);
 
         renderJobTable(pageSlice);
         renderPagination(totalFiltered);
-        updateClearFiltersButton();
+        renderActiveChips();
     }
 
-    function updateClearFiltersButton() {
-        const hasFilters = landingSearchQuery ||
-            landingDeptFilter !== 'all' ||
-            landingTimeFilter !== 'all' ||
-            landingSelectedCSRs.length > 0 ||
-            landingSelectedAssignees.length > 0 ||
-            landingSelectedClients.length > 0;
-        const btn = document.getElementById('clearFiltersBtn');
-        if (btn) btn.style.display = hasFilters ? '' : 'none';
+    // ── Controls block rendering ──
+    function renderControlsBlock(allJobs) {
+        // Quick-view counts from ALL active jobs (not filtered)
+        const overdueCount = allJobs.filter(j => isJobOverdue(j)).length;
+        const todayCount = allJobs.filter(j => isJobDueToday(j)).length;
+
+        // Show segmented control
+        const showGroup = document.getElementById('showSegGroup');
+        if (showGroup) {
+            const showOpts = [
+                { key: 'all', label: 'All', count: null },
+                { key: 'overdue', label: '\u26A0 Overdue', count: overdueCount, kind: 'danger' },
+                { key: 'today', label: 'Due Today', count: todayCount, kind: 'amber' }
+            ];
+            showGroup.innerHTML = showOpts.map(o => {
+                const isActive = landingQuickFilter === o.key;
+                let cls = 'seg-opt';
+                if (isActive) {
+                    cls += o.kind === 'amber' ? ' active-amber' : ' active';
+                } else if (o.kind === 'danger') {
+                    cls += ' idle-danger';
+                } else if (o.kind === 'amber') {
+                    cls += ' idle-amber';
+                }
+                let countHtml = '';
+                if (o.count !== null) {
+                    const hasCount = o.count > 0 ? ' has-count' : '';
+                    countHtml = '<span class="qv-count' + hasCount + '">' + o.count + '</span>';
+                }
+                return '<button class="' + cls + '" onclick="setQuickFilter(\'' + o.key + '\')">' + o.label + countHtml + '</button>';
+            }).join('');
+        }
+
+        // Group segmented control
+        const groupGroup = document.getElementById('groupSegGroup');
+        if (groupGroup) {
+            const groupOpts = [
+                { key: 'none', label: 'None' },
+                { key: 'status', label: 'Status' },
+                { key: 'csr', label: 'CSR' }
+            ];
+            groupGroup.innerHTML = groupOpts.map(o => {
+                const cls = 'seg-opt' + (landingGroupBy === o.key ? ' active' : '');
+                return '<button class="' + cls + '" onclick="setGroupBy(\'' + o.key + '\')">' + o.label + '</button>';
+            }).join('');
+        }
+
+        // Status inline options
+        const statusGroup = document.getElementById('statusSegGroup');
+        if (statusGroup) {
+            const statusOpts = [
+                { key: 'all', label: 'All' },
+                { key: 'new', label: 'New' },
+                { key: 'in-progress', label: 'In Progress' },
+                { key: 'on-hold', label: 'On Hold' },
+                { key: 'complete', label: 'Complete' },
+                { key: 'cancelled', label: 'Cancelled' }
+            ];
+            statusGroup.innerHTML = statusOpts.map((o, i) => {
+                let cls = 'inline-opt';
+                if (landingStatusFilter === o.key) {
+                    cls += o.key === 'all' ? ' active' : ' active-real';
+                }
+                const dot = i > 0 ? '<span class="inline-dot">\u00B7</span>' : '';
+                return dot + '<button class="' + cls + '" data-label="' + escHtml(o.label) +
+                    '" onclick="setStatusFilter(\'' + o.key + '\')"><span>' + escHtml(o.label) + '</span></button>';
+            }).join('');
+        }
+
+        // Dept inline options
+        const deptGroup = document.getElementById('deptSegGroup');
+        if (deptGroup) {
+            const deptOpts = [
+                { key: 'all', label: 'All' },
+                { key: 'prepress', label: 'Prepress' },
+                { key: 'techservices', label: 'Tech Services' }
+            ];
+            deptGroup.innerHTML = deptOpts.map((o, i) => {
+                let cls = 'inline-opt';
+                if (landingDeptFilter === o.key) {
+                    if (o.key === 'all') cls += ' active';
+                    else if (o.key === 'prepress') cls += ' active-real';
+                    else cls += ' active-navy';
+                }
+                const dot = i > 0 ? '<span class="inline-dot">\u00B7</span>' : '';
+                return dot + '<button class="' + cls + '" data-label="' + escHtml(o.label) +
+                    '" onclick="setDeptFilter(\'' + o.key + '\')"><span>' + escHtml(o.label) + '</span></button>';
+            }).join('');
+        }
+
+        // Updated trigger label
+        const timeLabels = { all: 'Updated', today: 'Today', week: 'This Week', month: 'This Month' };
+        const updatedLabel = document.getElementById('updatedLabel');
+        if (updatedLabel) updatedLabel.textContent = timeLabels[landingTimeFilter] || 'Updated';
+        const updatedCtrl = document.getElementById('updatedControl');
+        if (updatedCtrl) {
+            if (landingTimeFilter !== 'all') updatedCtrl.classList.add('has-selection');
+            else updatedCtrl.classList.remove('has-selection');
+        }
+
+        // Updated dropdown options
+        const updatedList = document.getElementById('updatedList');
+        if (updatedList) {
+            const timeOpts = [
+                { key: 'today', label: 'Today' },
+                { key: 'week', label: 'This Week' },
+                { key: 'month', label: 'This Month' },
+                { key: 'all', label: 'All Time' }
+            ];
+            updatedList.innerHTML = timeOpts.map(o => {
+                const checked = landingTimeFilter === o.key;
+                return '<label class="filter-dropdown-item"><input type="checkbox"' + (checked ? ' checked' : '') +
+                    ' onchange="setTimeFilter(\'' + o.key + '\')"> ' + escHtml(o.label) + '</label>';
+            }).join('');
+        }
+
+        // Update inline trigger active state (color + weight only, no count)
+        ['CSR', 'Assignee', 'Client'].forEach(type => {
+            const arr = type === 'CSR' ? landingSelectedCSRs :
+                        type === 'Assignee' ? landingSelectedAssignees : landingSelectedClients;
+            const btn = document.getElementById('filter' + type + 'Btn');
+            if (arr.length > 0) {
+                if (btn) btn.classList.add('has-selection');
+            } else {
+                if (btn) btn.classList.remove('has-selection');
+            }
+        });
+    }
+
+    // ── Active filter chips ──
+    function renderActiveChips() {
+        const container = document.getElementById('activeChips');
+        if (!container) return;
+
+        const chips = [];
+        if (landingViewTab === 'my') chips.push({ label: 'My Jobs', remove: "setLandingViewTab('all')" });
+        if (landingQuickFilter !== 'all') {
+            const ql = { overdue: 'Overdue', today: 'Due Today' };
+            chips.push({ label: ql[landingQuickFilter], remove: "setQuickFilter('all')" });
+        }
+        if (landingStatusFilter !== 'all') {
+            const sl = { 'new': 'New', 'in-progress': 'In Progress', 'on-hold': 'On Hold', 'complete': 'Complete', 'cancelled': 'Cancelled' };
+            chips.push({ label: sl[landingStatusFilter], remove: "setStatusFilter('all')" });
+        }
+        if (landingDeptFilter !== 'all') {
+            const dl = landingDeptFilter === 'prepress' ? 'Prepress' : 'Tech Services';
+            chips.push({ label: dl, remove: "setDeptFilter('all')" });
+        }
+        if (landingTimeFilter !== 'all') {
+            const tl = { today: 'Today', week: 'This Week', month: 'This Month' };
+            chips.push({ label: tl[landingTimeFilter], remove: "setTimeFilter('all')" });
+        }
+        landingSelectedCSRs.forEach(v => {
+            chips.push({ label: 'CSR: ' + v, remove: "removeChipFilter('selectedCSRs','" + escHtml(v).replace(/'/g, "\\'") + "')" });
+        });
+        landingSelectedAssignees.forEach(v => {
+            chips.push({ label: 'Assignee: ' + v, remove: "removeChipFilter('selectedAssignees','" + escHtml(v).replace(/'/g, "\\'") + "')" });
+        });
+        landingSelectedClients.forEach(v => {
+            chips.push({ label: 'Client: ' + v, remove: "removeChipFilter('selectedClients','" + escHtml(v).replace(/'/g, "\\'") + "')" });
+        });
+        if (landingSearchQuery) {
+            chips.push({ label: 'Search: \u201C' + landingSearchQuery + '\u201D', remove: "clearSearchChip()" });
+        }
+
+        if (chips.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = '';
+        container.innerHTML =
+            '<span class="active-chips-label">Active</span>' +
+            '<div class="active-chips-list">' +
+            chips.map(c =>
+                '<span class="active-chip">' + escHtml(c.label) +
+                '<span class="active-chip-x" onclick="' + c.remove + '">&times;</span></span>'
+            ).join('') +
+            '<button class="clear-all-link" onclick="clearLandingFilters()">Clear all</button>' +
+            '</div>';
+    }
+
+    function removeChipFilter(type, value) {
+        if (type === 'selectedCSRs') {
+            landingSelectedCSRs = landingSelectedCSRs.filter(v => v !== value);
+        } else if (type === 'selectedAssignees') {
+            landingSelectedAssignees = landingSelectedAssignees.filter(v => v !== value);
+        } else if (type === 'selectedClients') {
+            landingSelectedClients = landingSelectedClients.filter(v => v !== value);
+        }
+        landingCurrentPage = 1;
+        applyLandingFilters();
+    }
+
+    function clearSearchChip() {
+        landingSearchQuery = '';
+        const searchInput = document.getElementById('landingSearchInput');
+        if (searchInput) searchInput.value = '';
+        landingCurrentPage = 1;
+        applyLandingFilters();
     }
 
     function clearLandingFilters() {
+        landingViewTab = 'all';
         landingSelectedCSRs = [];
         landingSelectedAssignees = [];
         landingSelectedClients = [];
         landingDeptFilter = 'all';
         landingTimeFilter = 'all';
+        landingStatusFilter = 'all';
+        landingQuickFilter = 'all';
         landingSearchQuery = '';
         landingCurrentPage = 1;
         const searchInput = document.getElementById('landingSearchInput');
         if (searchInput) searchInput.value = '';
-        document.querySelectorAll('#filterBar .filter-pill[data-dept]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.dept === 'all');
-        });
-        document.querySelectorAll('#filterBar .filter-pill[data-time]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.time === 'all');
-        });
+        // Reset the multi-select dropdown DOM so it can't desync from state.
         ['CSR', 'Assignee', 'Client'].forEach(type => {
+            const list = document.getElementById('filter' + type + 'List');
+            if (list) list.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
             const btn = document.getElementById('filter' + type + 'Btn');
             if (btn) btn.classList.remove('has-selection');
-            const badge = document.getElementById('filter' + type + 'Count');
-            if (badge) badge.style.display = 'none';
         });
+        const updatedCtrl = document.getElementById('updatedControl');
+        if (updatedCtrl) updatedCtrl.classList.remove('has-selection');
+        document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
         applyLandingFilters();
     }
 
@@ -5982,6 +6266,118 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             }
         }
     }
+
+    // ── Status popover (shared: header control + list inline edit) ──
+
+    function openStatusPopover(anchorEl, jobId) {
+        if (document.body.classList.contains('read-only')) return;
+        closeStatusPopover();
+        var jobs = getActiveJobs();
+        var job = jobs.find(function(j) { return j.id === jobId; });
+        if (!job) return;
+        var current = getJobStatusLabel(job);
+
+        var popover = document.createElement('div');
+        popover.className = 'status-popover open';
+        STATUS_KEYS.forEach(function(key) {
+            var s = STATUS_MAP[key];
+            var opt = document.createElement('div');
+            opt.className = 'status-popover-option';
+            opt.innerHTML =
+                '<span class="status-popover-check">' + (current.cls === s.cls ? '&#10003;' : '') + '</span>' +
+                '<span class="status-badge ' + s.cls + '">' + s.label + '</span>';
+            opt.addEventListener('click', function(e) {
+                e.stopPropagation();
+                setJobStatus(jobId, key);
+                closeStatusPopover();
+            });
+            popover.appendChild(opt);
+        });
+
+        // Position below anchor
+        var rect = anchorEl.getBoundingClientRect();
+        popover.style.position = 'fixed';
+        popover.style.top = (rect.bottom + 4) + 'px';
+        popover.style.left = rect.left + 'px';
+        document.body.appendChild(popover);
+
+        // Clamp to viewport
+        var pRect = popover.getBoundingClientRect();
+        if (pRect.right > window.innerWidth - 8) {
+            popover.style.left = Math.max(8, window.innerWidth - pRect.width - 8) + 'px';
+        }
+        if (pRect.bottom > window.innerHeight - 8) {
+            popover.style.top = (rect.top - pRect.height - 4) + 'px';
+        }
+
+        // Close on outside click (next tick so this click doesn't fire it)
+        setTimeout(function() {
+            document.addEventListener('click', closeStatusPopoverOnOutside);
+        }, 0);
+    }
+
+    function closeStatusPopoverOnOutside(e) {
+        var pop = document.querySelector('.status-popover.open');
+        if (pop && !pop.contains(e.target)) {
+            closeStatusPopover();
+        }
+    }
+
+    function closeStatusPopover() {
+        document.removeEventListener('click', closeStatusPopoverOnOutside);
+        var existing = document.querySelector('.status-popover.open');
+        if (existing) existing.remove();
+    }
+
+    function setJobStatus(jobId, statusKey) {
+        var jobs = getActiveJobs();
+        var job = jobs.find(function(j) { return j.id === jobId; });
+        if (!job) return;
+        job.status = statusKey;
+        persistJob(job);
+
+        // Update header badge if this is the currently loaded job
+        if (currentJobId === jobId) {
+            renderHeaderStatusBadge(job);
+        }
+
+        // Re-render landing list
+        applyLandingFilters();
+    }
+
+    function renderHeaderStatusBadge(job) {
+        var el = document.getElementById('headerStatusBadge');
+        if (!el) return;
+        var s = getJobStatusLabel(job);
+        el.innerHTML = '<span class="status-badge ' + s.cls + '">' + s.label + '</span>' +
+            '<span class="status-header-caret">&#9660;</span>';
+    }
+
+    // ── Stale-cache reload modal ──
+
+    function showReloadModal() {
+        var modal = document.getElementById('reloadModal');
+        if (modal) modal.style.display = 'block';
+    }
+
+    function confirmReloadModal() {
+        var modal = document.getElementById('reloadModal');
+        if (modal) modal.style.display = 'none';
+        refreshJobs().then(function() {
+            if (currentJobId) loadJob(currentJobId);
+        });
+    }
+
+    // Enter key triggers reload when modal is visible
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            var modal = document.getElementById('reloadModal');
+            if (modal && modal.style.display === 'block') {
+                e.preventDefault();
+                confirmReloadModal();
+            }
+        }
+    });
 
     function openVersionPicker() {
         if (!currentJobId) return;
