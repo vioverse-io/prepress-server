@@ -24,6 +24,8 @@
 </head>
 <body>
 
+<div id="serverBanner" class="server-banner"></div>
+
 <div class="backup-toast" id="backupToast"></div>
 
 <!-- ═══ NAVIGATION BAR ═══ -->
@@ -110,6 +112,8 @@
       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
       <input type="text" class="profile-name-input" id="profileNameInput" placeholder="Your nickname..." maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()">
       <div class="profile-auth-label" id="profileAuthLabel" style="display:none;">Windows login</div>
+      <input type="text" class="profile-name-input profile-nickname-input" id="profileNicknameInput" placeholder="Display name (for greetings)" maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()" style="display:none;">
+      <div class="profile-nickname-hint" id="profileNicknameHint" style="display:none;">How you want to be greeted</div>
       <button class="profile-save-btn" onclick="saveProfile()">Save</button>
     </div>
   </div>

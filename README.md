@@ -11,7 +11,7 @@ A Node + Microsoft SQL Server web app. It runs on one server; everyone on the LA
 
 ## First-time setup (in order)
 
-**1. Copy the app folder onto the server.** Suggested location: `C:\Apps\prepress-wo-sql`. Do not use `C:\Program Files` -- it blocks the app from reading its `.env` file.
+**1. Copy the app folder onto the server.** Suggested location: `C:\Apps\STS_WorkOrder`. Do not use `C:\Program Files` -- it blocks the app from reading its `.env` file.
 
 **2. Create the database** (in SSMS):
 - Run `sql\create-database.sql` -- creates the `STS_WorkOrder` database.

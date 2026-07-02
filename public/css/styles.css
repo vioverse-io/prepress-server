@@ -2565,6 +2565,10 @@ body.text-lg .job-item-text { font-size: 15px; }
 .profile-auth-label::before {
   content: '\1F512'; font-size: 10px;
 }
+.profile-nickname-input { margin-top: 8px; }
+.profile-nickname-hint {
+  font-size: 11px; color: var(--ink-muted); margin-top: 3px;
+}
 
 .profile-save-btn {
   width: 100%; padding: 8px 16px; margin-top: var(--space-md); font-size: 13px; font-weight: 500;
@@ -3031,4 +3035,42 @@ body.text-lg .job-item-text { font-size: 15px; }
     --dept-accent-muted: #7a9bbf !important;
   }
   [data-theme="dark"] body { background: #ffffff !important; color: #1a1a2e !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SERVER-UNREACHABLE BANNER
+   ════════════════════════════════════════════════════════════════ */
+.server-banner {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  padding: 10px 20px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  animation: banner-slide-in 0.3s ease-out;
+}
+.server-banner.server-down {
+  display: block;
+  background: #fef3cd;
+  color: #856404;
+  border-bottom: 2px solid #f0c36d;
+}
+.server-banner.server-restored {
+  display: block;
+  background: #d4edda;
+  color: #155724;
+  border-bottom: 2px solid #a3d9b1;
+}
+.server-banner .banner-detail {
+  font-weight: 400;
+  margin-left: 6px;
+}
+@keyframes banner-slide-in {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
 }

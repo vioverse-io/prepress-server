@@ -150,6 +150,7 @@ app.post('/api/jobs', async (req, res) => {
             }
         }
 
+        trackUser(j.createdBy, 'created job');
         res.status(201).json({ id: j.id, rowVersion: 1 });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -225,6 +226,7 @@ app.put('/api/jobs/:id', async (req, res) => {
 
         // Return the new rowVersion
         const updated = await query`SELECT rowVersion FROM jobs WHERE id = ${req.params.id}`;
+        trackUser(j.lastModifiedBy, 'saved job');
         res.json({ rowVersion: updated.recordset[0].rowVersion });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -417,6 +419,31 @@ app.delete('/api/components/:id', async (req, res) => {
     }
 });
 
+// ── Active Users (in-memory) ──
+// Tracks the last time each user made a write or heartbeat request.
+// Joe can check GET /api/active-users before rebooting the server.
+
+const activeUsers = new Map(); // username -> { lastSeen (ms), action }
+const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+function trackUser(username, action) {
+    if (!username) return;
+    activeUsers.set(username.toLowerCase(), { lastSeen: Date.now(), action });
+}
+
+app.get('/api/active-users', (req, res) => {
+    const cutoff = Date.now() - ACTIVE_WINDOW_MS;
+    const users = [];
+    for (const [name, info] of activeUsers) {
+        if (info.lastSeen >= cutoff) {
+            const ago = Math.round((Date.now() - info.lastSeen) / 1000);
+            users.push({ user: name, lastAction: info.action, secondsAgo: ago });
+        }
+    }
+    users.sort((a, b) => a.secondsAgo - b.secondsAgo);
+    res.json({ activeInLast10Min: users.length, users });
+});
+
 // ── Job Locking (lightweight) ──
 
 const locks = new Map(); // jobId -> { user, heartbeat }
@@ -432,6 +459,7 @@ app.post('/api/jobs/:id/lock', (req, res) => {
     }
 
     locks.set(jobId, { user, heartbeat: Date.now() });
+    trackUser(user, 'editing');
     res.json({ locked: false, lockedBy: user });
 });
 
@@ -442,6 +470,7 @@ app.put('/api/jobs/:id/lock', (req, res) => {
     if (existing && existing.user === user) {
         existing.heartbeat = Date.now();
     }
+    trackUser(user, 'editing');
     res.json({ ok: true });
 });
 

@@ -18,6 +18,7 @@ The complete list of files the app needs. On each `/prepress-deploy` (and each m
 ## Backend -- server-sql/
 - server.js
 - db.js
+- nodeService.js
 - package.json
 - package-lock.json
 - .env.example

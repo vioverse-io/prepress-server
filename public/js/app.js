@@ -583,6 +583,13 @@
                 nameInput.classList.add('auth-locked');
                 const label = document.getElementById('profileAuthLabel');
                 if (label) label.style.display = '';
+                var nickInput = document.getElementById('profileNicknameInput');
+                var nickHint = document.getElementById('profileNicknameHint');
+                if (nickInput) {
+                    nickInput.style.display = '';
+                    nickInput.value = localStorage.getItem('prepressNickname') || '';
+                }
+                if (nickHint) nickHint.style.display = '';
             }
 
             // Reset crop area to saved state (use original source for re-cropping)
@@ -614,6 +621,16 @@
         } else {
             localStorage.removeItem('prepressUserName');
         }
+        // Save nickname (greeting display name)
+        var nickInput = document.getElementById('profileNicknameInput');
+        if (nickInput && nickInput.style.display !== 'none') {
+            var nick = nickInput.value.trim();
+            if (nick) {
+                localStorage.setItem('prepressNickname', nick);
+            } else {
+                localStorage.removeItem('prepressNickname');
+            }
+        }
         // Save cropped photo
         const cropped = cropToDataURL();
         if (cropped) {
@@ -622,7 +639,8 @@
         updateProfileBtn();
         updateLandingGreeting();
         document.getElementById('profilePopover').classList.remove('open');
-        if (name) showToast(`Profile saved. Hey, ${name}!`);
+        var greeting = getGreetingName();
+        if (name) showToast('Profile saved. Hey, ' + greeting + '!');
     }
 
     function updateProfileBtn() {
@@ -659,10 +677,23 @@
         }
     }
 
+    function displayFirstName(raw) {
+        var first = raw.indexOf('.') > 0 ? raw.substring(0, raw.indexOf('.')) : raw;
+        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+    }
+
+    function getGreetingName() {
+        var nick = localStorage.getItem('prepressNickname');
+        if (nick) return nick;
+        var name = localStorage.getItem('prepressUserName');
+        if (name) return displayFirstName(name);
+        return '';
+    }
+
     function updateLandingGreeting() {
         const el = document.getElementById('landingGreeting');
         if (!el) return;
-        const name = localStorage.getItem('prepressUserName');
+        const name = getGreetingName();
         if (name) {
             el.textContent = pickGreeting(name);
         } else {
@@ -1463,6 +1494,73 @@
         return _saveQueue;
     }
 
+    // ── Server-down retry queue ──
+    // When a save fails because the server is unreachable, the request
+    // is held in _retryQueue. A poller checks every few seconds and
+    // replays the queue once the server responds to /api/health.
+
+    var _retryQueue = [];
+    var _retryTimer = null;
+    var _serverDown = false;
+    var RETRY_INTERVAL_MS = 5000;
+
+    function isNetworkError(err) {
+        return err instanceof TypeError && err.message === 'Failed to fetch';
+    }
+
+    function showServerBanner(down) {
+        var banner = document.getElementById('serverBanner');
+        if (!banner) return;
+        if (down) {
+            var count = _retryQueue.length;
+            banner.className = 'server-banner server-down';
+            banner.innerHTML = 'Server unreachable -- your changes are saved locally and will sync when it returns.' +
+                (count ? '<span class="banner-detail">(' + count + ' pending save' + (count > 1 ? 's' : '') + ')</span>' : '');
+        } else {
+            banner.className = 'server-banner server-restored';
+            banner.innerHTML = 'Server connection restored -- all changes synced.';
+            setTimeout(function() { banner.className = 'server-banner'; banner.innerHTML = ''; }, 4000);
+        }
+    }
+
+    function startRetryPoller() {
+        if (_retryTimer) return;
+        _retryTimer = setInterval(async function() {
+            try {
+                var res = await fetch('/api/health');
+                if (!res.ok) return;
+            } catch (e) {
+                return; // still down
+            }
+            // Server is back -- flush the queue
+            _serverDown = false;
+            clearInterval(_retryTimer);
+            _retryTimer = null;
+            await flushRetryQueue();
+            showServerBanner(false);
+        }, RETRY_INTERVAL_MS);
+    }
+
+    async function flushRetryQueue() {
+        while (_retryQueue.length > 0) {
+            var entry = _retryQueue[0];
+            try {
+                await entry.fn();
+                _retryQueue.shift();
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    // Server went down again mid-flush
+                    _serverDown = true;
+                    showServerBanner(true);
+                    startRetryPoller();
+                    return;
+                }
+                // Non-network error (e.g. 409 conflict) -- drop this entry, it was handled
+                _retryQueue.shift();
+            }
+        }
+    }
+
     function getActiveJobs() {
         return jobsCache || [];
     }
@@ -1505,20 +1603,31 @@
             job.lastModifiedBy = getUserName();
             const payload = { ...job, rowVersion: rowVersions[job.id] || 1 };
             delete payload.components;
-            const res = await fetch('/api/jobs/' + job.id, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (res.status === 409) {
-                showReloadModal();
-                return false;
+            try {
+                const res = await fetch('/api/jobs/' + job.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.status === 409) {
+                    showReloadModal();
+                    return false;
+                }
+                if (!res.ok) throw new Error('Failed to save job');
+                const data = await res.json();
+                rowVersions[job.id] = data.rowVersion;
+                job.rowVersion = data.rowVersion;
+                return true;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    _serverDown = true;
+                    _retryQueue.push({ fn: function() { return persistJob(job); } });
+                    showServerBanner(true);
+                    startRetryPoller();
+                    return false;
+                }
+                throw e;
             }
-            if (!res.ok) throw new Error('Failed to save job');
-            const data = await res.json();
-            rowVersions[job.id] = data.rowVersion;
-            job.rowVersion = data.rowVersion;
-            return true;
         });
     }
 
@@ -1532,20 +1641,31 @@
                 lastModified: new Date().toISOString(),
                 lastModifiedBy: getUserName()
             };
-            const res = await fetch('/api/components/' + comp.id, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (res.status === 409) {
-                showReloadModal();
-                return false;
+            try {
+                const res = await fetch('/api/components/' + comp.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.status === 409) {
+                    showReloadModal();
+                    return false;
+                }
+                if (!res.ok) throw new Error('Failed to save component');
+                const data = await res.json();
+                rowVersions[job.id] = data.rowVersion;
+                job.rowVersion = data.rowVersion;
+                return true;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    _serverDown = true;
+                    _retryQueue.push({ fn: function() { return persistComponent(comp, job); } });
+                    showServerBanner(true);
+                    startRetryPoller();
+                    return false;
+                }
+                throw e;
             }
-            if (!res.ok) throw new Error('Failed to save component');
-            const data = await res.json();
-            rowVersions[job.id] = data.rowVersion;
-            job.rowVersion = data.rowVersion;
-            return true;
         });
     }
 
@@ -2101,9 +2221,11 @@
         localStorage.setItem('prepressActiveJob', jobId);
         localStorage.setItem('prepressActiveJobTime', Date.now().toString());
 
-        // Stamp access time so recent list reorders on open
+        // Stamp access time locally so recent list reorders on open.
+        // Only update the local cache -- don't trigger a server persist,
+        // because opening a job is not a real change.
         job.lastAccessed = new Date().toISOString();
-        saveActiveJobs(jobs);
+        jobsCache = jobs;
 
         updatePrintHeader(job);
 
@@ -3499,6 +3621,10 @@ ${sectionsHTML}
             if ((c.status === 'newer' || c.status === 'older') && !checkedIdxs.has(idx)) continue;
 
             try {
+                // Stamp the importing user so imported jobs appear under My Jobs
+                var importer = getUserName();
+                if (importer) c.job.createdBy = importer;
+
                 if (c.status === 'new') {
                     const res = await fetch('/api/jobs', {
                         method: 'POST',
