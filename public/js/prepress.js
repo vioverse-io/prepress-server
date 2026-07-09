@@ -24,10 +24,11 @@ window.DEPT_REGISTRY.prepress = {
     ],
 
     FLAT_SIZES_STANDARD: [
+        "8.5\u2033 x 11\u2033", "6\u2033 x 9\u2033",
         "3.5\u2033 x 5\u2033", "4\u2033 x 6\u2033", "4.25\u2033 x 6\u2033", "5\u2033 x 7\u2033",
-        "6\u2033 x 9\u2033", "6\u2033 x 11\u2033", "8.5\u2033 x 5.5\u2033", "8.5\u2033 x 11\u2033",
+        "6\u2033 x 11\u2033", "8.5\u2033 x 5.5\u2033",
         "8.5\u2033 x 14\u2033", "11\u2033 x 17\u2033", "8.5\u2033 x 3.5\u2033",
-        "1\u2033 x 2.625\u2033", "2\u2033 x 4\u2033", "4\u2033 x 6\u2033",
+        "1\u2033 x 2.625\u2033", "2\u2033 x 4\u2033",
         "3.33\u2033 x 4\u2033", "2\u2033 x 2\u2033", "N/A"
     ],
     FLAT_SIZES_ENVELOPE: [
@@ -42,7 +43,7 @@ window.DEPT_REGISTRY.prepress = {
     PRESS_STANDARD: ["Canon (color)", "Titan (b&w)", "MCS", "Outside Print", "N/A"],
     PRESS_ENVELOPE: ["Kirk-Rudy", "Outside Print", "N/A"],
 
-    ENVELOPE_KEYWORDS: ['envelope', 'no. 9', 'no. 10', 'a7', '6x9', '9x12'],
+    ENVELOPE_KEYWORDS: ['envelope', 'no. 9', 'no. 10', 'a7', 'bre'],
 
     // Field data-id for flat size input, press input
     flatSizeFieldId: 'ps3n',

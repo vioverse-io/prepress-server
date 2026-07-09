@@ -57,7 +57,6 @@
         <div class="more-dropdown-sep"></div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateJob()">Duplicate Job</div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateComponent()">Duplicate Component</div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); saveAsTemplate()">Save as Template</div>
         <div class="more-dropdown-sep"></div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); archiveJob()">Archive</div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); resetChecklist()">Reset</div>
@@ -65,7 +64,6 @@
         <div class="more-dropdown-sep"></div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); document.getElementById('importFile').click()">Import</div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); exportJobs()">Export</div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); restoreFromBackupUI()">Restore from Backup</div>
         <div class="more-dropdown-sep"></div>
         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); toggleTextSize()">
           <span class="text-scale-btn"><span class="sm">A</span><span class="lg">A</span></span>
@@ -286,9 +284,10 @@
       </div>
     </div>
 
+    <!-- Sticky controls wrapper (stays below navbar on scroll) -->
+    <div class="sticky-controls">
     <!-- View tabs -->
     <div class="view-tabs" id="viewTabs"></div>
-
     <!-- Controls block (Show row + Filter row) -->
     <div class="controls-block" id="controlsBlock">
       <!-- Row 1: Show + Group (segmented pills) -->
@@ -370,6 +369,7 @@
       <button class="bulk-btn bulk-delete" onclick="bulkDeleteJobs()">Delete</button>
       <button class="bulk-btn bulk-cancel" onclick="clearTableSelection()">Cancel</button>
     </div>
+    </div><!-- /.sticky-controls -->
 
     <!-- Job table -->
     <div class="job-table-wrap" id="jobTableWrap">
@@ -1306,7 +1306,7 @@
         </ul>
         <h4>Bulk Actions</h4>
         <p>Use the checkboxes on each row (or the select-all header checkbox) to select multiple jobs, then Archive or Delete them in bulk.</p>
-        <p>Archived jobs and saved templates appear below the table.</p>
+        <p>Archived jobs appear below the table.</p>
       </section>
 
       <section class="help-section">
@@ -1371,7 +1371,7 @@
           <tr><td><strong>+</strong></td><td>New work order</td></tr>
           <tr><td><strong>Print</strong></td><td>Print current, all components, or all as one PDF</td></tr>
           <tr><td><strong>Undo / Redo</strong></td><td>Ctrl+Z / Ctrl+Y</td></tr>
-          <tr><td><strong>... (More)</strong></td><td>Edit Job, Duplicate Job/Component, Templates, Archive, Reset, Delete, Import/Export, Restore Backup, Text Size</td></tr>
+          <tr><td><strong>... (More)</strong></td><td>Edit Job, Duplicate Job/Component, Archive, Reset, Delete, Import/Export, Text Size</td></tr>
           <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
           <tr><td><strong>Book</strong></td><td>This guide</td></tr>
           <tr><td><strong>Moon / Sun</strong></td><td>Dark mode toggle</td></tr>
@@ -1389,11 +1389,6 @@
           <li><strong>Print All as One PDF</strong> -- all components combined into one document.</li>
         </ul>
         <p>Output uses the active department's color (red for Prepress, blue for Tech Services) and only shows that department's instructions and fields. The app warns if required fields are empty or the generated summary is out of date.</p>
-      </section>
-
-      <section class="help-section">
-        <h3>Templates</h3>
-        <p><strong>More &gt; Save as Template</strong> saves the current component's checklist for reuse. When adding a new component, pick a template to pre-fill it.</p>
       </section>
 
       <section class="help-section">
@@ -1419,7 +1414,7 @@
 
       <section class="help-section">
         <h3>Admin Password</h3>
-        <p>Deleting a job or template requires an admin password to prevent accidents.</p>
+        <p>Deleting a job requires an admin password to prevent accidents.</p>
       </section>
 
       <section class="help-section">
@@ -1430,7 +1425,7 @@
       <section class="help-section help-section-limits">
         <h3>Limits</h3>
         <ul>
-          <li>50 active jobs (archive old ones to make room)</li>
+          <li>10,000 active jobs</li>
           <li>10 components per job</li>
           <li>15 undo steps</li>
         </ul>

@@ -14,7 +14,7 @@
     let currentJobId = null;
     let currentComponentId = null;
     let activeDepartment = 'prepress';
-    const MAX_ACTIVE_JOBS = 50;
+    const MAX_ACTIVE_JOBS = 10000;
     const MAX_UNDO_HISTORY = 15;
     const MAX_COMPONENTS = 10;
 
@@ -74,7 +74,7 @@
         "9\u2033 x 12\u2033 \u2003\u20039x12 Flat Env",
         "N/A"
     ];
-    const ENVELOPE_KEYWORDS = ['envelope', 'no. 9', 'no. 10', 'a7', '6x9', '9x12'];
+    const ENVELOPE_KEYWORDS = ['envelope', 'no. 9', 'no. 10', 'a7', 'bre'];
 
     function isEnvelopeComponent(name) {
         const lower = (name || '').toLowerCase();
@@ -155,9 +155,7 @@
         setTimeout(() => el.classList.remove('visible'), 4000);
     }
 
-    async function restoreFromBackupUI() {
-        alert('Data is stored on the server. No local backup to restore.');
-    }
+    async function restoreFromBackupUI() { }
 
     function autoResizeTextarea(el) {
         el.style.height = 'auto';
@@ -1790,7 +1788,7 @@
             rowVersions[newJob.id] = data.rowVersion;
             newJob.rowVersion = data.rowVersion;
         } catch (e) {
-            alert('Error creating job: ' + e.message);
+            showErrorModal("Couldn't create this job. Server may be busy.", 'Close');
             return;
         }
 
@@ -1855,7 +1853,7 @@
             const res = await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete job');
         } catch (e) {
-            alert('Error deleting job: ' + e.message);
+            showErrorModal("Couldn't delete this job.", 'Refresh');
             return;
         }
 
@@ -1909,7 +1907,7 @@
         loadJobs();
 
         if (deletedIds.length < idsToDelete.length) {
-            alert((idsToDelete.length - deletedIds.length) + ' job(s) could not be deleted (server error).');
+            showErrorModal((idsToDelete.length - deletedIds.length) + " job(s) couldn't be deleted.", 'Refresh');
         }
 
         if (jobs.length === 0) closeJobDropdown();
@@ -1972,6 +1970,7 @@
 
         await refreshJobs();
         loadJobs();
+        clearTableSelection();
         const ok = ids.length - failed;
         if (failed > 0) {
             showToast(ok + ' archived, ' + failed + ' failed');
@@ -2534,7 +2533,7 @@
             const res = await fetch('/api/jobs/' + currentJobId + '/archive', { method: 'POST' });
             if (!res.ok) throw new Error('Failed to archive job');
         } catch (e) {
-            alert('Error archiving job: ' + e.message);
+            showErrorModal("Couldn't archive this job.", 'Refresh');
             return;
         }
 
@@ -2613,7 +2612,7 @@
             const res = await fetch('/api/jobs/' + jobId + '/unarchive', { method: 'POST' });
             if (!res.ok) throw new Error('Failed to unarchive');
         } catch (e) {
-            alert('Error restoring job: ' + e.message);
+            showErrorModal("Couldn't restore this job.", 'Refresh');
             return;
         }
         await refreshJobs();
@@ -2628,7 +2627,7 @@
             const res = await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
             if (!res.ok) throw new Error('Server returned ' + res.status);
         } catch (e) {
-            alert('Error deleting archived job: ' + e.message);
+            showErrorModal("Couldn't delete this archived job.", 'Close');
             return;
         }
         renderArchivedJobs();
@@ -2795,7 +2794,7 @@
                 return;
             }
         } catch (e) {
-            alert('Error verifying password');
+            showErrorModal("Couldn't verify password. Server may be down.", 'Close');
             return;
         }
         document.getElementById('adminPasswordModal').style.display = 'none';
@@ -2832,7 +2831,7 @@
             const res = await fetch('/api/jobs/' + currentJobId, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete job');
         } catch (e) {
-            alert('Error deleting job: ' + e.message);
+            showErrorModal("Couldn't delete this job.", 'Refresh');
             return;
         }
 
@@ -3512,12 +3511,12 @@ ${sectionsHTML}
             try {
                 const data = JSON.parse(e.target.result);
                 if (!data.prepressJobs && !data.prepressJobsArchive) {
-                    alert('Invalid file format. Please select a valid export file.');
+                    showErrorModal("This file isn't a valid export.", 'Close');
                     return;
                 }
                 showImportSummary(data);
             } catch (err) {
-                alert('Error reading file: ' + err.message);
+                showErrorModal("Couldn't read this file.", 'Close');
             }
         };
         reader.readAsText(file);
@@ -3562,7 +3561,7 @@ ${sectionsHTML}
         const skipCount = classified.filter(c => c.status === 'skip').length;
 
         if (newCount === 0 && newerCount === 0 && olderCount === 0) {
-            alert('All jobs in the file already exist and are up to date.');
+            showWarningModal('All jobs in the file already exist and are up to date.', [], { type: 'info', okLabel: 'Close' });
             return;
         }
 
@@ -3665,9 +3664,11 @@ ${sectionsHTML}
         await refreshJobs();
         loadJobs();
         closeImportModal();
-        let msg = 'Imported: ' + addedCount + ' added, ' + updatedCount + ' updated.';
-        if (failedCount > 0) msg += '\n' + failedCount + ' failed (server error).';
-        alert(msg);
+        if (failedCount > 0) {
+            showErrorModal('Imported ' + addedCount + ' added, ' + updatedCount + ' updated. ' + failedCount + " couldn't be saved.", 'Refresh');
+        } else {
+            showToast(addedCount + ' added, ' + updatedCount + ' updated');
+        }
     }
 
     function toggleCollapse(titleEl) {
@@ -4079,6 +4080,17 @@ ${sectionsHTML}
             function onCancel() { cleanup(false); }
             btnOk.addEventListener('click', onOk);
             if (showCancel) btnCancel.addEventListener('click', onCancel);
+        });
+    }
+
+    // Show a styled error modal with an action button (Refresh, Close, Try Again, etc.)
+    // Returns a promise that resolves true if the action button was clicked.
+    function showErrorModal(message, actionLabel) {
+        const btn = actionLabel || 'Close';
+        const isRefresh = btn === 'Refresh';
+        return showWarningModal(message, [], { type: 'required', okLabel: btn }).then(function(clicked) {
+            if (clicked && isRefresh) { refreshJobs().then(function() { loadJobs(); }); }
+            return clicked;
         });
     }
 
@@ -4959,7 +4971,7 @@ ${sectionsHTML}
             const data = await res.json();
             rowVersions[job.id] = data.rowVersion;
         } catch (e) {
-            alert('Error adding component: ' + e.message);
+            showErrorModal("Couldn't add component.", 'Close');
             return;
         }
 
@@ -4994,7 +5006,7 @@ ${sectionsHTML}
             const data = await res.json();
             if (data.rowVersion) rowVersions[job.id] = data.rowVersion;
         } catch (e) {
-            alert('Error deleting component: ' + e.message);
+            showErrorModal("Couldn't delete component.", 'Close');
             return;
         }
 
@@ -5592,7 +5604,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             const data = await res.json();
             rowVersions[job.id] = data.rowVersion;
         } catch (e) {
-            alert('Error duplicating component: ' + e.message);
+            showErrorModal("Couldn't duplicate component.", 'Close');
             return;
         }
 
@@ -5940,6 +5952,12 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
 
         renderViewTabs(allJobs);
         renderControlsBlock(allJobs);
+
+        // Keep subtitle job count in sync
+        const countEl = document.getElementById('landingJobCount');
+        if (countEl) {
+            countEl.textContent = 'Connected to SQL Server -- ' + allJobs.length + ' active job' + (allJobs.length !== 1 ? 's' : '');
+        }
 
         const me = getUserName();
         let filtered = (landingViewTab === 'my' && me) ? allJobs.filter(j => isMyJob(j)) : [...allJobs];

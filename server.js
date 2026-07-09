@@ -249,7 +249,11 @@ app.delete('/api/jobs/:id', async (req, res) => {
 app.post('/api/jobs/:id/archive', async (req, res) => {
     try {
         const now = new Date().toISOString();
-        const result = await query`UPDATE jobs SET archivedDate = ${now} WHERE id = ${req.params.id}`;
+        const pool = await getPool();
+        const upd = pool.request();
+        upd.input('id', req.params.id);
+        upd.input('archivedDate', now);
+        const result = await upd.query('UPDATE jobs SET archivedDate = @archivedDate WHERE id = @id');
         if (result.rowsAffected[0] === 0) return res.status(404).json({ error: 'Job not found' });
         res.json({ archived: true, archivedDate: now });
     } catch (err) {

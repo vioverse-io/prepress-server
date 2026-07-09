@@ -1835,6 +1835,20 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 }
 .view-tab.active .tab-count { background: var(--accent-soft); color: var(--accent); }
 
+/* ── Sticky controls wrapper ── */
+.sticky-controls {
+  position: sticky;
+  top: 56px; /* below nav-bar */
+  z-index: 40;
+  background: var(--surface);
+  padding-bottom: 6px;
+  margin-left: calc(-1 * var(--space-lg));
+  margin-right: calc(-1 * var(--space-lg));
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+}
+
 /* ── Controls block (Show + Filter rows) ── */
 .controls-block { margin-bottom: 14px; }
 /* Horizontal rules between rows */
