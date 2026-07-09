@@ -2548,30 +2548,32 @@
 
     // ========== ARCHIVE BROWSER ==========
 
-    let archivedJobsExpanded = false;
-
-    function toggleArchivedExpanded() {
-        archivedJobsExpanded = !archivedJobsExpanded;
-        renderArchivedJobs();
-    }
+    let archivePage = 1;
+    let archivePageSize = 10;
+    let _archiveCache = [];
 
     async function renderArchivedJobs() {
         const container = document.getElementById('archivedJobs');
         if (!container) return;
-        let archive = [];
         try {
             const res = await fetch('/api/archive');
-            if (res.ok) archive = await res.json();
-        } catch (e) { /* show empty */ }
-        if (archive.length === 0) {
-            container.innerHTML = '';
-            return;
-        }
+            if (res.ok) _archiveCache = await res.json();
+        } catch (e) { _archiveCache = []; }
+        renderArchivePage();
+    }
+
+    function renderArchivePage() {
+        const container = document.getElementById('archivedJobs');
+        if (!container) return;
+        const archive = _archiveCache;
+        if (archive.length === 0) { container.innerHTML = ''; return; }
         archive.sort((a, b) => new Date(b.archivedDate || b.lastModified || 0) - new Date(a.archivedDate || a.lastModified || 0));
 
-        const PAGE = 5;
-        const showCount = archivedJobsExpanded ? archive.length : Math.min(archive.length, PAGE);
-        const visible = archive.slice(0, showCount);
+        const totalPages = Math.ceil(archive.length / archivePageSize);
+        if (archivePage > totalPages) archivePage = totalPages;
+        if (archivePage < 1) archivePage = 1;
+        const start = (archivePage - 1) * archivePageSize;
+        const visible = archive.slice(start, start + archivePageSize);
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
         const items = visible.map(j => {
@@ -2587,20 +2589,32 @@
                 '</div>';
         }).join('');
 
-        let footer = '';
-        if (!archivedJobsExpanded && archive.length > PAGE) {
-            footer = '<button class="show-more-btn" onclick="toggleArchivedExpanded()">+' + (archive.length - PAGE) + ' more</button>';
-        } else if (archivedJobsExpanded && archive.length > PAGE) {
-            footer = '<button class="show-more-btn" onclick="toggleArchivedExpanded()">Show less</button>';
+        let pageSizeHtml = '<select class="archive-page-size" onchange="setArchivePageSize(this.value)">';
+        [10, 25, 50, 100].forEach(n => {
+            pageSizeHtml += '<option value="' + n + '"' + (archivePageSize === n ? ' selected' : '') + '>' + n + ' per page</option>';
+        });
+        pageSizeHtml += '</select>';
+
+        let paginationHtml = '';
+        if (totalPages > 1) {
+            paginationHtml = '<div class="archive-pagination">' +
+                '<button class="mini-btn"' + (archivePage <= 1 ? ' disabled' : '') + ' onclick="setArchivePage(' + (archivePage - 1) + ')">&laquo; Prev</button>' +
+                '<span class="archive-page-info">Page ' + archivePage + ' of ' + totalPages + '</span>' +
+                '<button class="mini-btn"' + (archivePage >= totalPages ? ' disabled' : '') + ' onclick="setArchivePage(' + (archivePage + 1) + ')">Next &raquo;</button>' +
+                '</div>';
         }
 
         container.innerHTML =
             '<div class="bottom-section-header">' +
             '<span class="bottom-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>Archived</span>' +
             '<span class="bottom-count">' + archive.length + '</span>' +
+            pageSizeHtml +
             '</div>' +
-            items + footer;
+            items + paginationHtml;
     }
+
+    function setArchivePage(p) { archivePage = p; renderArchivePage(); }
+    function setArchivePageSize(n) { archivePageSize = parseInt(n, 10); archivePage = 1; renderArchivePage(); }
 
     async function unarchiveJob(jobId) {
         const active = getActiveJobs();
@@ -4054,7 +4068,7 @@ ${sectionsHTML}
     function showWarningModal(title, items, opts) {
         const type = (opts && opts.type) || 'qc';
         const okLabel = (opts && opts.okLabel) || 'Print Anyway';
-        const showCancel = type !== 'info';
+        const showCancel = opts && opts.showCancel !== undefined ? opts.showCancel : type !== 'info';
         return new Promise(resolve => {
             const modal = document.getElementById('qcWarningModal');
             const header = document.getElementById('qcWarningHeader');
@@ -6487,6 +6501,18 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
 
         // Re-render landing list
         applyLandingFilters();
+
+        // Prompt to archive when marking complete
+        if (statusKey === 'complete') {
+            showWarningModal('Archive this job?', [], { type: 'info', okLabel: 'Yes', showCancel: true }).then(function(yes) {
+                if (!yes) return;
+                fetch('/api/jobs/' + jobId + '/archive', { method: 'POST' }).then(function(res) {
+                    if (!res.ok) { showErrorModal("Couldn't archive this job.", 'Refresh'); return; }
+                    if (currentJobId === jobId) { currentJobId = null; showNoJobState(); }
+                    refreshJobs().then(function() { loadJobs(); });
+                }).catch(function() { showErrorModal("Couldn't archive this job.", 'Refresh'); });
+            });
+        }
     }
 
     function renderHeaderStatusBadge(job) {

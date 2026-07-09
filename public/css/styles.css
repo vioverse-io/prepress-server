@@ -1647,6 +1647,8 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .reload-modal-content .modal-buttons { justify-content: center; }
 
 /* ── QC Warning Modal ── */
+#qcWarningModal .qc-warning-list:empty { display: none; }
+#qcWarningModal .qc-warning-list:empty + .modal-buttons { margin-top: 0; }
 .qc-warning-header {
   font-size: 15px;
   font-weight: 700;
@@ -2295,11 +2297,17 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .mini-btn:hover { color: var(--accent); border-color: var(--accent); }
 .mini-btn.mini-delete { color: var(--danger); border-color: transparent; }
 .mini-btn.mini-delete:hover { border-color: var(--danger); }
-.show-more-btn {
-  font-family: var(--font-body); font-size: 12px; font-weight: 600;
-  color: var(--accent); background: none; border: none; cursor: pointer; padding: 6px 0;
+.archive-pagination {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 8px 0 2px;
 }
-.show-more-btn:hover { text-decoration: underline; }
+.archive-page-info { font-size: 12px; color: var(--ink-muted); }
+.archive-page-size {
+  font-family: var(--font-body); font-size: 11px; color: var(--ink-muted);
+  background: var(--surface); border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm); padding: 2px 6px; cursor: pointer;
+  margin-left: auto;
+}
 
 /* Template select (kept for add-component modal) */
 .template-select {

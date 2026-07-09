@@ -1,3 +1,822 @@
+diff --git a/CHANGES_SINCE_JUNE29.diff b/CHANGES_SINCE_JUNE29.diff
+new file mode 100644
+index 0000000..8918a4e
+--- /dev/null
++++ b/CHANGES_SINCE_JUNE29.diff
+@@ -0,0 +1,813 @@
++diff --git a/DEPLOY_MANIFEST.md b/DEPLOY_MANIFEST.md
++index 02f0f5a..8bf16b9 100644
++--- a/DEPLOY_MANIFEST.md
+++++ b/DEPLOY_MANIFEST.md
++@@ -18,6 +18,7 @@ The complete list of files the app needs. On each `/prepress-deploy` (and each m
++ ## Backend -- server-sql/
++ - server.js
++ - db.js
+++- nodeService.js
++ - package.json
++ - package-lock.json
++ - .env.example
++diff --git a/README.md b/README.md
++index b594931..5f5d88c 100644
++--- a/README.md
+++++ b/README.md
++@@ -11,7 +11,7 @@ A Node + Microsoft SQL Server web app. It runs on one server; everyone on the LA
++ 
++ ## First-time setup (in order)
++ 
++-**1. Copy the app folder onto the server.** Suggested location: `C:\Apps\prepress-wo-sql`. Do not use `C:\Program Files` -- it blocks the app from reading its `.env` file.
+++**1. Copy the app folder onto the server.** Suggested location: `C:\Apps\STS_WorkOrder`. Do not use `C:\Program Files` -- it blocks the app from reading its `.env` file.
++ 
++ **2. Create the database** (in SSMS):
++ - Run `sql\create-database.sql` -- creates the `STS_WorkOrder` database.
++diff --git a/nodeService.js b/nodeService.js
++new file mode 100644
++index 0000000..5dd9687
++--- /dev/null
+++++ b/nodeService.js
++@@ -0,0 +1,22 @@
+++var Service = require('node-windows').Service;
+++
+++// Create a new service object
+++var svc = new Service({
+++  name:'STS WorkOrder App',
+++  description: 'STS WorkOrder App.',
+++  script: 'C:\\Apps\\STS_WorkOrder\\server.js',
+++  nodeOptions: [
+++    '--harmony',
+++    '--max_old_space_size=4096'
+++  ]
+++  //, workingDirectory: '...'
+++  //, allowServiceLogon: true
+++});
+++
+++// Listen for the "install" event, which indicates the
+++// process is available as a service.
+++svc.on('install',function(){
+++  svc.start();
+++});
+++
+++svc.install();
++\ No newline at end of file
++diff --git a/public/css/styles.css b/public/css/styles.css
++index 0cd245d..69e8296 100644
++--- a/public/css/styles.css
+++++ b/public/css/styles.css
++@@ -1835,6 +1835,20 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
++ }
++ .view-tab.active .tab-count { background: var(--accent-soft); color: var(--accent); }
++ 
+++/* ── Sticky controls wrapper ── */
+++.sticky-controls {
+++  position: sticky;
+++  top: 56px; /* below nav-bar */
+++  z-index: 40;
+++  background: var(--surface);
+++  padding-bottom: 6px;
+++  margin-left: calc(-1 * var(--space-lg));
+++  margin-right: calc(-1 * var(--space-lg));
+++  padding-left: var(--space-lg);
+++  padding-right: var(--space-lg);
+++  border-bottom: 1px solid var(--border-light);
+++}
+++
++ /* ── Controls block (Show + Filter rows) ── */
++ .controls-block { margin-bottom: 14px; }
++ /* Horizontal rules between rows */
++@@ -2565,6 +2579,10 @@ body.text-lg .job-item-text { font-size: 15px; }
++ .profile-auth-label::before {
++   content: '\1F512'; font-size: 10px;
++ }
+++.profile-nickname-input { margin-top: 8px; }
+++.profile-nickname-hint {
+++  font-size: 11px; color: var(--ink-muted); margin-top: 3px;
+++}
++ 
++ .profile-save-btn {
++   width: 100%; padding: 8px 16px; margin-top: var(--space-md); font-size: 13px; font-weight: 500;
++@@ -3031,4 +3049,42 @@ body.text-lg .job-item-text { font-size: 15px; }
++     --dept-accent-muted: #7a9bbf !important;
++   }
++   [data-theme="dark"] body { background: #ffffff !important; color: #1a1a2e !important; }
+++}
+++
+++/* ════════════════════════════════════════════════════════════════
+++   SERVER-UNREACHABLE BANNER
+++   ════════════════════════════════════════════════════════════════ */
+++.server-banner {
+++  display: none;
+++  position: fixed;
+++  top: 0;
+++  left: 0;
+++  right: 0;
+++  z-index: 10000;
+++  padding: 10px 20px;
+++  text-align: center;
+++  font-family: var(--font-body);
+++  font-size: 14px;
+++  font-weight: 600;
+++  animation: banner-slide-in 0.3s ease-out;
+++}
+++.server-banner.server-down {
+++  display: block;
+++  background: #fef3cd;
+++  color: #856404;
+++  border-bottom: 2px solid #f0c36d;
+++}
+++.server-banner.server-restored {
+++  display: block;
+++  background: #d4edda;
+++  color: #155724;
+++  border-bottom: 2px solid #a3d9b1;
+++}
+++.server-banner .banner-detail {
+++  font-weight: 400;
+++  margin-left: 6px;
+++}
+++@keyframes banner-slide-in {
+++  from { transform: translateY(-100%); }
+++  to   { transform: translateY(0); }
++ }
++\ No newline at end of file
++diff --git a/public/index.html b/public/index.html
++index 074695b..c97c0c6 100644
++--- a/public/index.html
+++++ b/public/index.html
++@@ -24,6 +24,8 @@
++ </head>
++ <body>
++ 
+++<div id="serverBanner" class="server-banner"></div>
+++
++ <div class="backup-toast" id="backupToast"></div>
++ 
++ <!-- ═══ NAVIGATION BAR ═══ -->
++@@ -55,7 +57,6 @@
++         <div class="more-dropdown-sep"></div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateJob()">Duplicate Job</div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateComponent()">Duplicate Component</div>
++-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); saveAsTemplate()">Save as Template</div>
++         <div class="more-dropdown-sep"></div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); archiveJob()">Archive</div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); resetChecklist()">Reset</div>
++@@ -63,7 +64,6 @@
++         <div class="more-dropdown-sep"></div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); document.getElementById('importFile').click()">Import</div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); exportJobs()">Export</div>
++-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); restoreFromBackupUI()">Restore from Backup</div>
++         <div class="more-dropdown-sep"></div>
++         <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); toggleTextSize()">
++           <span class="text-scale-btn"><span class="sm">A</span><span class="lg">A</span></span>
++@@ -110,6 +110,8 @@
++       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
++       <input type="text" class="profile-name-input" id="profileNameInput" placeholder="Your nickname..." maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()">
++       <div class="profile-auth-label" id="profileAuthLabel" style="display:none;">Windows login</div>
+++      <input type="text" class="profile-name-input profile-nickname-input" id="profileNicknameInput" placeholder="Display name (for greetings)" maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()" style="display:none;">
+++      <div class="profile-nickname-hint" id="profileNicknameHint" style="display:none;">How you want to be greeted</div>
++       <button class="profile-save-btn" onclick="saveProfile()">Save</button>
++     </div>
++   </div>
++@@ -282,9 +284,10 @@
++       </div>
++     </div>
++ 
+++    <!-- Sticky controls wrapper (stays below navbar on scroll) -->
+++    <div class="sticky-controls">
++     <!-- View tabs -->
++     <div class="view-tabs" id="viewTabs"></div>
++-
++     <!-- Controls block (Show row + Filter row) -->
++     <div class="controls-block" id="controlsBlock">
++       <!-- Row 1: Show + Group (segmented pills) -->
++@@ -366,6 +369,7 @@
++       <button class="bulk-btn bulk-delete" onclick="bulkDeleteJobs()">Delete</button>
++       <button class="bulk-btn bulk-cancel" onclick="clearTableSelection()">Cancel</button>
++     </div>
+++    </div><!-- /.sticky-controls -->
++ 
++     <!-- Job table -->
++     <div class="job-table-wrap" id="jobTableWrap">
++@@ -1302,7 +1306,7 @@
++         </ul>
++         <h4>Bulk Actions</h4>
++         <p>Use the checkboxes on each row (or the select-all header checkbox) to select multiple jobs, then Archive or Delete them in bulk.</p>
++-        <p>Archived jobs and saved templates appear below the table.</p>
+++        <p>Archived jobs appear below the table.</p>
++       </section>
++ 
++       <section class="help-section">
++@@ -1367,7 +1371,7 @@
++           <tr><td><strong>+</strong></td><td>New work order</td></tr>
++           <tr><td><strong>Print</strong></td><td>Print current, all components, or all as one PDF</td></tr>
++           <tr><td><strong>Undo / Redo</strong></td><td>Ctrl+Z / Ctrl+Y</td></tr>
++-          <tr><td><strong>... (More)</strong></td><td>Edit Job, Duplicate Job/Component, Templates, Archive, Reset, Delete, Import/Export, Restore Backup, Text Size</td></tr>
+++          <tr><td><strong>... (More)</strong></td><td>Edit Job, Duplicate Job/Component, Archive, Reset, Delete, Import/Export, Text Size</td></tr>
++           <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
++           <tr><td><strong>Book</strong></td><td>This guide</td></tr>
++           <tr><td><strong>Moon / Sun</strong></td><td>Dark mode toggle</td></tr>
++@@ -1387,11 +1391,6 @@
++         <p>Output uses the active department's color (red for Prepress, blue for Tech Services) and only shows that department's instructions and fields. The app warns if required fields are empty or the generated summary is out of date.</p>
++       </section>
++ 
++-      <section class="help-section">
++-        <h3>Templates</h3>
++-        <p><strong>More &gt; Save as Template</strong> saves the current component's checklist for reuse. When adding a new component, pick a template to pre-fill it.</p>
++-      </section>
++-
++       <section class="help-section">
++         <h3>Duplicating</h3>
++         <ul>
++@@ -1415,7 +1414,7 @@
++ 
++       <section class="help-section">
++         <h3>Admin Password</h3>
++-        <p>Deleting a job or template requires an admin password to prevent accidents.</p>
+++        <p>Deleting a job requires an admin password to prevent accidents.</p>
++       </section>
++ 
++       <section class="help-section">
++@@ -1426,7 +1425,7 @@
++       <section class="help-section help-section-limits">
++         <h3>Limits</h3>
++         <ul>
++-          <li>50 active jobs (archive old ones to make room)</li>
+++          <li>10,000 active jobs</li>
++           <li>10 components per job</li>
++           <li>15 undo steps</li>
++         </ul>
++diff --git a/public/js/app.js b/public/js/app.js
++index 15699ae..d7a6457 100644
++--- a/public/js/app.js
+++++ b/public/js/app.js
++@@ -14,7 +14,7 @@
++     let currentJobId = null;
++     let currentComponentId = null;
++     let activeDepartment = 'prepress';
++-    const MAX_ACTIVE_JOBS = 50;
+++    const MAX_ACTIVE_JOBS = 10000;
++     const MAX_UNDO_HISTORY = 15;
++     const MAX_COMPONENTS = 10;
++ 
++@@ -74,7 +74,7 @@
++         "9\u2033 x 12\u2033 \u2003\u20039x12 Flat Env",
++         "N/A"
++     ];
++-    const ENVELOPE_KEYWORDS = ['envelope', 'no. 9', 'no. 10', 'a7', '6x9', '9x12'];
+++    const ENVELOPE_KEYWORDS = ['envelope', 'no. 9', 'no. 10', 'a7', 'bre'];
++ 
++     function isEnvelopeComponent(name) {
++         const lower = (name || '').toLowerCase();
++@@ -155,9 +155,7 @@
++         setTimeout(() => el.classList.remove('visible'), 4000);
++     }
++ 
++-    async function restoreFromBackupUI() {
++-        alert('Data is stored on the server. No local backup to restore.');
++-    }
+++    async function restoreFromBackupUI() { }
++ 
++     function autoResizeTextarea(el) {
++         el.style.height = 'auto';
++@@ -583,6 +581,13 @@
++                 nameInput.classList.add('auth-locked');
++                 const label = document.getElementById('profileAuthLabel');
++                 if (label) label.style.display = '';
+++                var nickInput = document.getElementById('profileNicknameInput');
+++                var nickHint = document.getElementById('profileNicknameHint');
+++                if (nickInput) {
+++                    nickInput.style.display = '';
+++                    nickInput.value = localStorage.getItem('prepressNickname') || '';
+++                }
+++                if (nickHint) nickHint.style.display = '';
++             }
++ 
++             // Reset crop area to saved state (use original source for re-cropping)
++@@ -614,6 +619,16 @@
++         } else {
++             localStorage.removeItem('prepressUserName');
++         }
+++        // Save nickname (greeting display name)
+++        var nickInput = document.getElementById('profileNicknameInput');
+++        if (nickInput && nickInput.style.display !== 'none') {
+++            var nick = nickInput.value.trim();
+++            if (nick) {
+++                localStorage.setItem('prepressNickname', nick);
+++            } else {
+++                localStorage.removeItem('prepressNickname');
+++            }
+++        }
++         // Save cropped photo
++         const cropped = cropToDataURL();
++         if (cropped) {
++@@ -622,7 +637,8 @@
++         updateProfileBtn();
++         updateLandingGreeting();
++         document.getElementById('profilePopover').classList.remove('open');
++-        if (name) showToast(`Profile saved. Hey, ${name}!`);
+++        var greeting = getGreetingName();
+++        if (name) showToast('Profile saved. Hey, ' + greeting + '!');
++     }
++ 
++     function updateProfileBtn() {
++@@ -659,10 +675,23 @@
++         }
++     }
++ 
+++    function displayFirstName(raw) {
+++        var first = raw.indexOf('.') > 0 ? raw.substring(0, raw.indexOf('.')) : raw;
+++        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+++    }
+++
+++    function getGreetingName() {
+++        var nick = localStorage.getItem('prepressNickname');
+++        if (nick) return nick;
+++        var name = localStorage.getItem('prepressUserName');
+++        if (name) return displayFirstName(name);
+++        return '';
+++    }
+++
++     function updateLandingGreeting() {
++         const el = document.getElementById('landingGreeting');
++         if (!el) return;
++-        const name = localStorage.getItem('prepressUserName');
+++        const name = getGreetingName();
++         if (name) {
++             el.textContent = pickGreeting(name);
++         } else {
++@@ -1463,6 +1492,73 @@
++         return _saveQueue;
++     }
++ 
+++    // ── Server-down retry queue ──
+++    // When a save fails because the server is unreachable, the request
+++    // is held in _retryQueue. A poller checks every few seconds and
+++    // replays the queue once the server responds to /api/health.
+++
+++    var _retryQueue = [];
+++    var _retryTimer = null;
+++    var _serverDown = false;
+++    var RETRY_INTERVAL_MS = 5000;
+++
+++    function isNetworkError(err) {
+++        return err instanceof TypeError && err.message === 'Failed to fetch';
+++    }
+++
+++    function showServerBanner(down) {
+++        var banner = document.getElementById('serverBanner');
+++        if (!banner) return;
+++        if (down) {
+++            var count = _retryQueue.length;
+++            banner.className = 'server-banner server-down';
+++            banner.innerHTML = 'Server unreachable -- your changes are saved locally and will sync when it returns.' +
+++                (count ? '<span class="banner-detail">(' + count + ' pending save' + (count > 1 ? 's' : '') + ')</span>' : '');
+++        } else {
+++            banner.className = 'server-banner server-restored';
+++            banner.innerHTML = 'Server connection restored -- all changes synced.';
+++            setTimeout(function() { banner.className = 'server-banner'; banner.innerHTML = ''; }, 4000);
+++        }
+++    }
+++
+++    function startRetryPoller() {
+++        if (_retryTimer) return;
+++        _retryTimer = setInterval(async function() {
+++            try {
+++                var res = await fetch('/api/health');
+++                if (!res.ok) return;
+++            } catch (e) {
+++                return; // still down
+++            }
+++            // Server is back -- flush the queue
+++            _serverDown = false;
+++            clearInterval(_retryTimer);
+++            _retryTimer = null;
+++            await flushRetryQueue();
+++            showServerBanner(false);
+++        }, RETRY_INTERVAL_MS);
+++    }
+++
+++    async function flushRetryQueue() {
+++        while (_retryQueue.length > 0) {
+++            var entry = _retryQueue[0];
+++            try {
+++                await entry.fn();
+++                _retryQueue.shift();
+++            } catch (e) {
+++                if (isNetworkError(e)) {
+++                    // Server went down again mid-flush
+++                    _serverDown = true;
+++                    showServerBanner(true);
+++                    startRetryPoller();
+++                    return;
+++                }
+++                // Non-network error (e.g. 409 conflict) -- drop this entry, it was handled
+++                _retryQueue.shift();
+++            }
+++        }
+++    }
+++
++     function getActiveJobs() {
++         return jobsCache || [];
++     }
++@@ -1505,20 +1601,31 @@
++             job.lastModifiedBy = getUserName();
++             const payload = { ...job, rowVersion: rowVersions[job.id] || 1 };
++             delete payload.components;
++-            const res = await fetch('/api/jobs/' + job.id, {
++-                method: 'PUT',
++-                headers: { 'Content-Type': 'application/json' },
++-                body: JSON.stringify(payload)
++-            });
++-            if (res.status === 409) {
++-                showReloadModal();
++-                return false;
+++            try {
+++                const res = await fetch('/api/jobs/' + job.id, {
+++                    method: 'PUT',
+++                    headers: { 'Content-Type': 'application/json' },
+++                    body: JSON.stringify(payload)
+++                });
+++                if (res.status === 409) {
+++                    showReloadModal();
+++                    return false;
+++                }
+++                if (!res.ok) throw new Error('Failed to save job');
+++                const data = await res.json();
+++                rowVersions[job.id] = data.rowVersion;
+++                job.rowVersion = data.rowVersion;
+++                return true;
+++            } catch (e) {
+++                if (isNetworkError(e)) {
+++                    _serverDown = true;
+++                    _retryQueue.push({ fn: function() { return persistJob(job); } });
+++                    showServerBanner(true);
+++                    startRetryPoller();
+++                    return false;
+++                }
+++                throw e;
++             }
++-            if (!res.ok) throw new Error('Failed to save job');
++-            const data = await res.json();
++-            rowVersions[job.id] = data.rowVersion;
++-            job.rowVersion = data.rowVersion;
++-            return true;
++         });
++     }
++ 
++@@ -1532,20 +1639,31 @@
++                 lastModified: new Date().toISOString(),
++                 lastModifiedBy: getUserName()
++             };
++-            const res = await fetch('/api/components/' + comp.id, {
++-                method: 'PUT',
++-                headers: { 'Content-Type': 'application/json' },
++-                body: JSON.stringify(payload)
++-            });
++-            if (res.status === 409) {
++-                showReloadModal();
++-                return false;
+++            try {
+++                const res = await fetch('/api/components/' + comp.id, {
+++                    method: 'PUT',
+++                    headers: { 'Content-Type': 'application/json' },
+++                    body: JSON.stringify(payload)
+++                });
+++                if (res.status === 409) {
+++                    showReloadModal();
+++                    return false;
+++                }
+++                if (!res.ok) throw new Error('Failed to save component');
+++                const data = await res.json();
+++                rowVersions[job.id] = data.rowVersion;
+++                job.rowVersion = data.rowVersion;
+++                return true;
+++            } catch (e) {
+++                if (isNetworkError(e)) {
+++                    _serverDown = true;
+++                    _retryQueue.push({ fn: function() { return persistComponent(comp, job); } });
+++                    showServerBanner(true);
+++                    startRetryPoller();
+++                    return false;
+++                }
+++                throw e;
++             }
++-            if (!res.ok) throw new Error('Failed to save component');
++-            const data = await res.json();
++-            rowVersions[job.id] = data.rowVersion;
++-            job.rowVersion = data.rowVersion;
++-            return true;
++         });
++     }
++ 
++@@ -1670,7 +1788,7 @@
++             rowVersions[newJob.id] = data.rowVersion;
++             newJob.rowVersion = data.rowVersion;
++         } catch (e) {
++-            alert('Error creating job: ' + e.message);
+++            showErrorModal("Couldn't create this job. Server may be busy.", 'Close');
++             return;
++         }
++ 
++@@ -1735,7 +1853,7 @@
++             const res = await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
++             if (!res.ok) throw new Error('Failed to delete job');
++         } catch (e) {
++-            alert('Error deleting job: ' + e.message);
+++            showErrorModal("Couldn't delete this job.", 'Refresh');
++             return;
++         }
++ 
++@@ -1789,7 +1907,7 @@
++         loadJobs();
++ 
++         if (deletedIds.length < idsToDelete.length) {
++-            alert((idsToDelete.length - deletedIds.length) + ' job(s) could not be deleted (server error).');
+++            showErrorModal((idsToDelete.length - deletedIds.length) + " job(s) couldn't be deleted.", 'Refresh');
++         }
++ 
++         if (jobs.length === 0) closeJobDropdown();
++@@ -1852,6 +1970,7 @@
++ 
++         await refreshJobs();
++         loadJobs();
+++        clearTableSelection();
++         const ok = ids.length - failed;
++         if (failed > 0) {
++             showToast(ok + ' archived, ' + failed + ' failed');
++@@ -2101,9 +2220,11 @@
++         localStorage.setItem('prepressActiveJob', jobId);
++         localStorage.setItem('prepressActiveJobTime', Date.now().toString());
++ 
++-        // Stamp access time so recent list reorders on open
+++        // Stamp access time locally so recent list reorders on open.
+++        // Only update the local cache -- don't trigger a server persist,
+++        // because opening a job is not a real change.
++         job.lastAccessed = new Date().toISOString();
++-        saveActiveJobs(jobs);
+++        jobsCache = jobs;
++ 
++         updatePrintHeader(job);
++ 
++@@ -2412,7 +2533,7 @@
++             const res = await fetch('/api/jobs/' + currentJobId + '/archive', { method: 'POST' });
++             if (!res.ok) throw new Error('Failed to archive job');
++         } catch (e) {
++-            alert('Error archiving job: ' + e.message);
+++            showErrorModal("Couldn't archive this job.", 'Refresh');
++             return;
++         }
++ 
++@@ -2491,7 +2612,7 @@
++             const res = await fetch('/api/jobs/' + jobId + '/unarchive', { method: 'POST' });
++             if (!res.ok) throw new Error('Failed to unarchive');
++         } catch (e) {
++-            alert('Error restoring job: ' + e.message);
+++            showErrorModal("Couldn't restore this job.", 'Refresh');
++             return;
++         }
++         await refreshJobs();
++@@ -2506,7 +2627,7 @@
++             const res = await fetch('/api/jobs/' + jobId, { method: 'DELETE' });
++             if (!res.ok) throw new Error('Server returned ' + res.status);
++         } catch (e) {
++-            alert('Error deleting archived job: ' + e.message);
+++            showErrorModal("Couldn't delete this archived job.", 'Close');
++             return;
++         }
++         renderArchivedJobs();
++@@ -2673,7 +2794,7 @@
++                 return;
++             }
++         } catch (e) {
++-            alert('Error verifying password');
+++            showErrorModal("Couldn't verify password. Server may be down.", 'Close');
++             return;
++         }
++         document.getElementById('adminPasswordModal').style.display = 'none';
++@@ -2710,7 +2831,7 @@
++             const res = await fetch('/api/jobs/' + currentJobId, { method: 'DELETE' });
++             if (!res.ok) throw new Error('Failed to delete job');
++         } catch (e) {
++-            alert('Error deleting job: ' + e.message);
+++            showErrorModal("Couldn't delete this job.", 'Refresh');
++             return;
++         }
++ 
++@@ -3390,12 +3511,12 @@ ${sectionsHTML}
++             try {
++                 const data = JSON.parse(e.target.result);
++                 if (!data.prepressJobs && !data.prepressJobsArchive) {
++-                    alert('Invalid file format. Please select a valid export file.');
+++                    showErrorModal("This file isn't a valid export.", 'Close');
++                     return;
++                 }
++                 showImportSummary(data);
++             } catch (err) {
++-                alert('Error reading file: ' + err.message);
+++                showErrorModal("Couldn't read this file.", 'Close');
++             }
++         };
++         reader.readAsText(file);
++@@ -3440,7 +3561,7 @@ ${sectionsHTML}
++         const skipCount = classified.filter(c => c.status === 'skip').length;
++ 
++         if (newCount === 0 && newerCount === 0 && olderCount === 0) {
++-            alert('All jobs in the file already exist and are up to date.');
+++            showWarningModal('All jobs in the file already exist and are up to date.', [], { type: 'info', okLabel: 'Close' });
++             return;
++         }
++ 
++@@ -3499,6 +3620,10 @@ ${sectionsHTML}
++             if ((c.status === 'newer' || c.status === 'older') && !checkedIdxs.has(idx)) continue;
++ 
++             try {
+++                // Stamp the importing user so imported jobs appear under My Jobs
+++                var importer = getUserName();
+++                if (importer) c.job.createdBy = importer;
+++
++                 if (c.status === 'new') {
++                     const res = await fetch('/api/jobs', {
++                         method: 'POST',
++@@ -3539,9 +3664,11 @@ ${sectionsHTML}
++         await refreshJobs();
++         loadJobs();
++         closeImportModal();
++-        let msg = 'Imported: ' + addedCount + ' added, ' + updatedCount + ' updated.';
++-        if (failedCount > 0) msg += '\n' + failedCount + ' failed (server error).';
++-        alert(msg);
+++        if (failedCount > 0) {
+++            showErrorModal('Imported ' + addedCount + ' added, ' + updatedCount + ' updated. ' + failedCount + " couldn't be saved.", 'Refresh');
+++        } else {
+++            showToast(addedCount + ' added, ' + updatedCount + ' updated');
+++        }
++     }
++ 
++     function toggleCollapse(titleEl) {
++@@ -3956,6 +4083,17 @@ ${sectionsHTML}
++         });
++     }
++ 
+++    // Show a styled error modal with an action button (Refresh, Close, Try Again, etc.)
+++    // Returns a promise that resolves true if the action button was clicked.
+++    function showErrorModal(message, actionLabel) {
+++        const btn = actionLabel || 'Close';
+++        const isRefresh = btn === 'Refresh';
+++        return showWarningModal(message, [], { type: 'required', okLabel: btn }).then(function(clicked) {
+++            if (clicked && isRefresh) { refreshJobs().then(function() { loadJobs(); }); }
+++            return clicked;
+++        });
+++    }
+++
++     function showQcWarning(compNames, warnings, okLabel) {
++         const nameSpan = '<span class="qc-comp-name">' + escHtml(compNames) + '</span>';
++         return showWarningModal('QC Warnings for ' + nameSpan, warnings, { type: 'qc', okLabel: okLabel || 'Print Anyway' });
++@@ -4833,7 +4971,7 @@ ${sectionsHTML}
++             const data = await res.json();
++             rowVersions[job.id] = data.rowVersion;
++         } catch (e) {
++-            alert('Error adding component: ' + e.message);
+++            showErrorModal("Couldn't add component.", 'Close');
++             return;
++         }
++ 
++@@ -4868,7 +5006,7 @@ ${sectionsHTML}
++             const data = await res.json();
++             if (data.rowVersion) rowVersions[job.id] = data.rowVersion;
++         } catch (e) {
++-            alert('Error deleting component: ' + e.message);
+++            showErrorModal("Couldn't delete component.", 'Close');
++             return;
++         }
++ 
++@@ -5466,7 +5604,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
++             const data = await res.json();
++             rowVersions[job.id] = data.rowVersion;
++         } catch (e) {
++-            alert('Error duplicating component: ' + e.message);
+++            showErrorModal("Couldn't duplicate component.", 'Close');
++             return;
++         }
++ 
++@@ -5815,6 +5953,12 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
++         renderViewTabs(allJobs);
++         renderControlsBlock(allJobs);
++ 
+++        // Keep subtitle job count in sync
+++        const countEl = document.getElementById('landingJobCount');
+++        if (countEl) {
+++            countEl.textContent = 'Connected to SQL Server -- ' + allJobs.length + ' active job' + (allJobs.length !== 1 ? 's' : '');
+++        }
+++
++         const me = getUserName();
++         let filtered = (landingViewTab === 'my' && me) ? allJobs.filter(j => isMyJob(j)) : [...allJobs];
++ 
++diff --git a/public/js/prepress.js b/public/js/prepress.js
++index 0d88efd..696dc09 100644
++--- a/public/js/prepress.js
+++++ b/public/js/prepress.js
++@@ -24,10 +24,11 @@ window.DEPT_REGISTRY.prepress = {
++     ],
++ 
++     FLAT_SIZES_STANDARD: [
+++        "8.5\u2033 x 11\u2033", "6\u2033 x 9\u2033",
++         "3.5\u2033 x 5\u2033", "4\u2033 x 6\u2033", "4.25\u2033 x 6\u2033", "5\u2033 x 7\u2033",
++-        "6\u2033 x 9\u2033", "6\u2033 x 11\u2033", "8.5\u2033 x 5.5\u2033", "8.5\u2033 x 11\u2033",
+++        "6\u2033 x 11\u2033", "8.5\u2033 x 5.5\u2033",
++         "8.5\u2033 x 14\u2033", "11\u2033 x 17\u2033", "8.5\u2033 x 3.5\u2033",
++-        "1\u2033 x 2.625\u2033", "2\u2033 x 4\u2033", "4\u2033 x 6\u2033",
+++        "1\u2033 x 2.625\u2033", "2\u2033 x 4\u2033",
++         "3.33\u2033 x 4\u2033", "2\u2033 x 2\u2033", "N/A"
++     ],
++     FLAT_SIZES_ENVELOPE: [
++@@ -42,7 +43,7 @@ window.DEPT_REGISTRY.prepress = {
++     PRESS_STANDARD: ["Canon (color)", "Titan (b&w)", "MCS", "Outside Print", "N/A"],
++     PRESS_ENVELOPE: ["Kirk-Rudy", "Outside Print", "N/A"],
++ 
++-    ENVELOPE_KEYWORDS: ['envelope', 'no. 9', 'no. 10', 'a7', '6x9', '9x12'],
+++    ENVELOPE_KEYWORDS: ['envelope', 'no. 9', 'no. 10', 'a7', 'bre'],
++ 
++     // Field data-id for flat size input, press input
++     flatSizeFieldId: 'ps3n',
++diff --git a/server.js b/server.js
++index 2c08e7b..238b02c 100644
++--- a/server.js
+++++ b/server.js
++@@ -150,6 +150,7 @@ app.post('/api/jobs', async (req, res) => {
++             }
++         }
++ 
+++        trackUser(j.createdBy, 'created job');
++         res.status(201).json({ id: j.id, rowVersion: 1 });
++     } catch (err) {
++         res.status(500).json({ error: err.message });
++@@ -225,6 +226,7 @@ app.put('/api/jobs/:id', async (req, res) => {
++ 
++         // Return the new rowVersion
++         const updated = await query`SELECT rowVersion FROM jobs WHERE id = ${req.params.id}`;
+++        trackUser(j.lastModifiedBy, 'saved job');
++         res.json({ rowVersion: updated.recordset[0].rowVersion });
++     } catch (err) {
++         res.status(500).json({ error: err.message });
++@@ -247,7 +249,11 @@ app.delete('/api/jobs/:id', async (req, res) => {
++ app.post('/api/jobs/:id/archive', async (req, res) => {
++     try {
++         const now = new Date().toISOString();
++-        const result = await query`UPDATE jobs SET archivedDate = ${now} WHERE id = ${req.params.id}`;
+++        const pool = await getPool();
+++        const upd = pool.request();
+++        upd.input('id', req.params.id);
+++        upd.input('archivedDate', now);
+++        const result = await upd.query('UPDATE jobs SET archivedDate = @archivedDate WHERE id = @id');
++         if (result.rowsAffected[0] === 0) return res.status(404).json({ error: 'Job not found' });
++         res.json({ archived: true, archivedDate: now });
++     } catch (err) {
++@@ -417,6 +423,31 @@ app.delete('/api/components/:id', async (req, res) => {
++     }
++ });
++ 
+++// ── Active Users (in-memory) ──
+++// Tracks the last time each user made a write or heartbeat request.
+++// Joe can check GET /api/active-users before rebooting the server.
+++
+++const activeUsers = new Map(); // username -> { lastSeen (ms), action }
+++const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+++
+++function trackUser(username, action) {
+++    if (!username) return;
+++    activeUsers.set(username.toLowerCase(), { lastSeen: Date.now(), action });
+++}
+++
+++app.get('/api/active-users', (req, res) => {
+++    const cutoff = Date.now() - ACTIVE_WINDOW_MS;
+++    const users = [];
+++    for (const [name, info] of activeUsers) {
+++        if (info.lastSeen >= cutoff) {
+++            const ago = Math.round((Date.now() - info.lastSeen) / 1000);
+++            users.push({ user: name, lastAction: info.action, secondsAgo: ago });
+++        }
+++    }
+++    users.sort((a, b) => a.secondsAgo - b.secondsAgo);
+++    res.json({ activeInLast10Min: users.length, users });
+++});
+++
++ // ── Job Locking (lightweight) ──
++ 
++ const locks = new Map(); // jobId -> { user, heartbeat }
++@@ -432,6 +463,7 @@ app.post('/api/jobs/:id/lock', (req, res) => {
++     }
++ 
++     locks.set(jobId, { user, heartbeat: Date.now() });
+++    trackUser(user, 'editing');
++     res.json({ locked: false, lockedBy: user });
++ });
++ 
++@@ -442,6 +474,7 @@ app.put('/api/jobs/:id/lock', (req, res) => {
++     if (existing && existing.user === user) {
++         existing.heartbeat = Date.now();
++     }
+++    trackUser(user, 'editing');
++     res.json({ ok: true });
++ });
++ 
 diff --git a/DEPLOY_MANIFEST.md b/DEPLOY_MANIFEST.md
 index 02f0f5a..8bf16b9 100644
 --- a/DEPLOY_MANIFEST.md
