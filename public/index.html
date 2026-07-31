@@ -1285,7 +1285,7 @@
         <ul>
           <li><strong>New Work Order</strong> creates a job.</li>
           <li>Click any row to open it.</li>
-          <li><strong>My Jobs / All Jobs</strong> tabs -- "My Jobs" shows only jobs assigned to you.</li>
+          <li><strong>My Jobs / All Jobs</strong> tabs -- "My Jobs" shows the jobs you created.</li>
           <li><strong>Search</strong> filters across job number, client, CSR, and project.</li>
         </ul>
         <h4>Controls</h4>
@@ -1306,7 +1306,20 @@
         </ul>
         <h4>Bulk Actions</h4>
         <p>Use the checkboxes on each row (or the select-all header checkbox) to select multiple jobs, then Archive or Delete them in bulk.</p>
-        <p>Archived jobs appear below the table.</p>
+        <h4>Pagination</h4>
+        <p>The table shows 10 jobs per page. Use the page buttons below it, or the <strong>per page</strong> dropdown to switch to 25 or 50.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Archived Jobs</h3>
+        <p>Archived jobs move out of the main table into the <strong>Archived</strong> panel below it. Nothing is deleted -- archiving just clears the job off the active list.</p>
+        <ul>
+          <li><strong>Paging</strong> -- the panel shows 10 archived jobs at a time, newest first. Use <strong>Prev</strong> / <strong>Next</strong> at the bottom of the panel to move through pages.</li>
+          <li><strong>Per page</strong> -- the dropdown in the panel header switches between 10, 25, 50, and 100 at a time. This dropdown controls the archive panel only; the job table has its own separate one.</li>
+          <li><strong>Restore</strong> -- click the job name or the <strong>Restore</strong> button to move it back to the active list.</li>
+          <li><strong>Delete</strong> -- the red x permanently deletes an archived job. This cannot be undone.</li>
+          <li><strong>Archive on complete</strong> -- setting a job's status to Complete asks "Archive this job?" Choose Yes to archive it, No to leave it on the active list.</li>
+        </ul>
       </section>
 
       <section class="help-section">
