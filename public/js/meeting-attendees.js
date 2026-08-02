@@ -7,8 +7,22 @@
 (function () {
     'use strict';
 
+    // Active assignee names for one department. app.js owns the roster and its
+    // getAssigneeNames() already falls back to the built-in lists when the
+    // roster table is unavailable, so calling it is always safe. The direct
+    // read of ASSIGNEE_OPTIONS is only for the case where app.js has not
+    // defined it, which would mean the app is broken anyway.
+    function deptNames(deptId) {
+        if (typeof window.getAssigneeNames === 'function') {
+            return window.getAssigneeNames(deptId);
+        }
+        const dept = (window.DEPT_REGISTRY && window.DEPT_REGISTRY[deptId]) || {};
+        return dept.ASSIGNEE_OPTIONS || [];
+    }
+
     // Build the merged roster from three live sources so any roster change
-    // in prepress.js / techservices.js / the CSR dropdown propagates here.
+    // propagates here: adding or turning off a name in "Manage CSRs &
+    // Assignees" changes who can be picked as an attendee.
     function getCombinedRoster() {
         const byName = new Map(); // name → role
 
@@ -21,10 +35,8 @@
             });
         }
 
-        const prepress = (window.DEPT_REGISTRY && window.DEPT_REGISTRY.prepress) || {};
-        const techservices = (window.DEPT_REGISTRY && window.DEPT_REGISTRY.techservices) || {};
-        add(prepress.ASSIGNEE_OPTIONS, 'Prepress');
-        add(techservices.ASSIGNEE_OPTIONS, 'TS');
+        add(deptNames('prepress'), 'Prepress');
+        add(deptNames('techservices'), 'TS');
 
         // CSRs live in the "New Work Order" form's quick-pick menu.
         const csrInput = document.getElementById('csrName');

@@ -216,6 +216,13 @@ app.put('/api/roster/:id', async (req, res) => {
 // GET /api/roster/usage -- every distinct person-name actually stamped on a
 // job (active AND archived), per list, with a count. The cleanup UI compares
 // this against the roster to show which old imported names still need merging.
+//
+// COLLATE Latin1_General_BIN2 is the same guard sql/fix-user-names.sql uses and
+// it is not optional. This database is case-insensitive, so without it SQL
+// Server folds "stef tarpy" and "Stef Tarpy" into a single row and the cleanup
+// list reports nothing wrong. The landing filter is browser code and does count
+// capitals, so it would show that person twice with their jobs split between
+// the two spellings, and nothing here would ever offer to fix it.
 app.get('/api/roster/usage', async (req, res) => {
     try {
         const pool = await getPool();
@@ -223,10 +230,10 @@ app.get('/api/roster/usage', async (req, res) => {
         for (const kind of ROSTER_KINDS) {
             const col = ROSTER_COLUMN[kind];
             const r = await pool.request().query(
-                `SELECT LTRIM(RTRIM(${col})) AS name, COUNT(*) AS count
+                `SELECT LTRIM(RTRIM(${col})) COLLATE Latin1_General_BIN2 AS name, COUNT(*) AS count
                  FROM jobs
                  WHERE LTRIM(RTRIM(ISNULL(${col}, ''))) <> ''
-                 GROUP BY LTRIM(RTRIM(${col}))
+                 GROUP BY LTRIM(RTRIM(${col})) COLLATE Latin1_General_BIN2
                  ORDER BY name`
             );
             usage[kind] = r.recordset;
@@ -238,9 +245,14 @@ app.get('/api/roster/usage', async (req, res) => {
 });
 
 // POST /api/roster/reassign -- move every job whose column matches fromName
-// (case-insensitive, trimmed) onto toName. This is the bulk merge: one call
+// (trimmed, capitals counted) onto toName. This is the bulk merge: one call
 // turns all of "Brandy", "Brandi" etc. into "Brandilee Czajkowski". Covers
 // archived jobs too, since they share the table.
+//
+// Both comparisons force Latin1_General_BIN2 for the same reason the usage
+// query above does. On the default case-insensitive collation the second test
+// reads "already correct" for a name that differs only in capitals, so moving
+// "stef tarpy" onto "Stef Tarpy" would silently update nothing.
 //
 // rowVersion is not bumped, matching sql/fix-user-names.sql: these are old
 // imported jobs nobody is actively editing, and not bumping avoids handing any
@@ -259,7 +271,8 @@ app.post('/api/roster/reassign', async (req, res) => {
             .input('from', from)
             .input('to', to)
             .query(`UPDATE jobs SET ${col} = @to
-                    WHERE LTRIM(RTRIM(${col})) = @from AND ${col} <> @to`);
+                    WHERE LTRIM(RTRIM(${col})) COLLATE Latin1_General_BIN2 = @from COLLATE Latin1_General_BIN2
+                      AND ${col} COLLATE Latin1_General_BIN2 <> @to COLLATE Latin1_General_BIN2`);
         res.json({ moved: result.rowsAffected[0] });
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -5516,14 +5516,24 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         renderRosterCleanup();
     }
 
-    // Names that appear on jobs but are not an active roster name for this tab,
-    // i.e. the old imported spellings that need merging. Compared case-
-    // insensitively and trimmed, matching how the server groups and reassigns.
+    // Every name on the roster for this tab, turned on or off. Someone who has
+    // left is still a known person: their old jobs are correct as they stand
+    // and must never be listed as an old spelling to be swept onto someone
+    // else. Turning a name off is how you retire it, not how you erase it.
+    function knownNamesFor(kind) {
+        const all = rosterAll(kind).map(p => p.name);
+        return new Set((all.length ? all : rosterNames(kind)).map(n => n.trim()));
+    }
+
+    // Names that appear on jobs but are on no roster entry for this tab, i.e.
+    // the old imported spellings that need merging. Compared exactly, capitals
+    // included, because the landing filter treats "stef tarpy" and "Stef Tarpy"
+    // as two separate people -- so both have to be fixable from here.
     function messyNamesFor(kind) {
         if (!_rosterUsage || !_rosterUsage[kind]) return [];
-        const active = new Set(rosterNames(kind).map(n => n.toLowerCase()));
+        const known = knownNamesFor(kind);
         return _rosterUsage[kind]
-            .filter(u => u.name && !active.has(u.name.trim().toLowerCase()))
+            .filter(u => u.name && !known.has(u.name.trim()))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 
