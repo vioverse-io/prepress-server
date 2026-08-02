@@ -26,6 +26,7 @@ The complete list of files the app needs. On each `/prepress-deploy` (and each m
 ## Database -- server-sql/sql/
 - create-database.sql
 - create-tables.sql
+- fix-user-names.sql  (one-time cleanup, run by hand in SSMS, not by the app)
 
 ## Docs -- server-sql/
 - README.md
@@ -36,6 +37,7 @@ The complete list of files the app needs. On each `/prepress-deploy` (and each m
 - The database (`STS_WorkOrder`) -- never re-run `create-database.sql` to reset it; the jobs live there. Run only the migrations listed in README.md. (`create-tables.sql` is guarded and safe to re-run, just unnecessary on an existing install.)
 - `node_modules/` -- regenerated on the server by `npm install`; do not hand-copy.
 - `.gitignore` -- per repo.
+- `dev/` -- local Docker test instance and seed script. Development only, never deployed. See `dev/README.md`.
 
 ## When a file is added or removed
 If you add a file under `server-sql/`, add it here AND to the copy list in `.claude/skills/prepress-deploy/SKILL.md`. If you delete a file, remove it from both and delete it from the public repo as well -- the deploy copies files, it does not auto-delete.

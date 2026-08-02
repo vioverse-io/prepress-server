@@ -2188,6 +2188,15 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .assign-toggle-ts { border: 1.5px solid var(--navy); color: var(--navy); }
 .assign-toggle.inactive { opacity: 0.38; }
 
+/* Created column. Same two-line shape as Signoff Due but muted throughout, so
+   the deadline stays the date your eye lands on. */
+/* Tighter side padding than the other cells -- the table is at its width
+   budget, and this buys back the few pixels the extra column costs. */
+.col-created { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+.job-table th:last-child { padding-left: 10px; padding-right: 10px; }
+.created-date { display: block; font-weight: 500; font-size: 12.5px; line-height: 1.2; color: var(--ink-muted); }
+.created-time { font-size: 11px; color: var(--ink-muted); opacity: 0.75; }
+
 /* Signoff Due column */
 .col-due { white-space: nowrap; }
 .due-date { display: block; font-weight: 600; font-size: 12.5px; line-height: 1.2; }
@@ -2197,13 +2206,16 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 .due-date.due-soon, .due-time.due-soon { color: var(--amber); }
 .due-date.due-today, .due-time.due-today { color: var(--amber); }
 
+/* Word only, no chip. The Status column sits directly to the right and already
+   carries a pill; two boxed tags side by side read as clutter. Colour matches
+   the date and time above it, so the cell reads as one unit. */
 .due-tag {
   font-size: 8.5px; font-weight: 700; letter-spacing: 0.05em;
-  padding: 1px 5px; border-radius: 7px; white-space: nowrap;
-  display: inline-block; margin-left: 6px; vertical-align: middle;
+  white-space: nowrap; display: inline-block;
+  margin-left: 6px; vertical-align: middle;
 }
-.due-tag-overdue { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
-.due-tag-soon { background: transparent; color: var(--amber); border: 1px solid var(--amber); }
+.due-tag-overdue { color: var(--danger); }
+.due-tag-soon { color: var(--amber); }
 
 /* Group header row */
 .group-header-row td {
@@ -2266,7 +2278,13 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
 /* ════════════════════════════════════════════════════════════════
    BOTTOM: ARCHIVE + TEMPLATES
    ════════════════════════════════════════════════════════════════ */
-.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-top: var(--space-lg); }
+/* Flex, not grid: a grid reserves both tracks even when one panel is hidden,
+   which left the archive stranded at half width with dead space beside it
+   whenever there were no saved templates. With flex, a hidden panel takes no
+   space, so a lone archive spans the full width and the two still split 50/50
+   when both have content. */
+.bottom-row { display: flex; gap: var(--space-lg); margin-top: var(--space-lg); }
+.bottom-row > .bottom-section { flex: 1; min-width: 0; }
 .bottom-section {
   background: var(--surface-raised); border: 1px solid var(--border-light);
   border-radius: var(--radius-md); padding: var(--space-md);
@@ -2306,7 +2324,20 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
   font-family: var(--font-body); font-size: 11px; color: var(--ink-muted);
   background: var(--surface); border: 1px solid var(--border-light);
   border-radius: var(--radius-sm); padding: 2px 6px; cursor: pointer;
-  margin-left: auto;
+  margin-left: 8px;
+}
+/* Search box in the archive panel header. margin-left:auto pushes it and the
+   per-page dropdown to the right edge, away from the title and count. */
+.archive-search {
+  width: 180px; margin-left: auto; padding: 3px 8px;
+  font-family: var(--font-body); font-size: 11px;
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+  outline: none; background: var(--surface); color: var(--ink);
+}
+.archive-search:focus { border-color: var(--accent); }
+.archive-search::placeholder { color: var(--ink-muted); opacity: 0.6; }
+.archive-empty {
+  padding: 14px 0; font-size: 13px; color: var(--ink-muted); text-align: center;
 }
 
 /* Template select (kept for add-component modal) */
@@ -2785,20 +2816,35 @@ body.text-lg .job-item-text { font-size: 15px; }
   --surface-raised: #2d333b;
   --surface-sunken: #1c2128;
   --border:       #3b424c;
-  --border-light: #2d333b;
+  /* Must stay lighter than --surface-raised (#2d333b). It used to be the same
+     value, so every hairline drawn on a raised surface was invisible in dark
+     mode -- row separators in the job table and the archive list, and the
+     panel borders around both. */
+  --border-light: #373d46;
 
   /* Nav slightly darker than body for separation, but no longer near-black */
   --nav-bg:     #1a1f26;
 
-  /* Accent (red) — lifted lightness + reduced chroma for comfort on dark */
-  --accent:        #E86E74;
-  --accent-hover:  #D85D65;
-  --accent-soft:   rgba(232,110,116,0.18);
+  /* Accent (red) — THE dark-mode red. Everything red on dark comes from here:
+     nav buttons, segmented pills, pagination, status badge strokes, assignee
+     rings, section headings and rules, toggle switches, the job number and
+     version labels, and every modal's primary button. To change the dark red,
+     change these four values and nothing else. The rgba forms are the same
+     colour at reduced alpha, so keep their RGB in step with --accent.
+
+     Was #E86E74, a lifted/desaturated red chosen in the 2026-04-20 dark-mode
+     audit because the then-current #E85560 vibrated on the cool grey surface.
+     Replaced 2026-08-01: at the small sizes it is actually used (chips, rings,
+     1.5px strokes) it read washed out, so it now matches --danger, the red the
+     OVERDUE due date uses. */
+  --accent:        #ef4444;
+  --accent-hover:  #dc2626;
+  --accent-soft:   rgba(239,68,68,0.18);
   --accent-muted:  #A05258;
 
   /* Status */
-  --active:        #E86E74;
-  --active-bg:     rgba(232,110,116,0.18);
+  --active:        var(--accent);
+  --active-bg:     var(--accent-soft);
   /* Raised so the off-state toggle pill reads as a pill, not just a dot.
      Previous #2d3340 matched --surface-raised and vanished into the field bg. */
   --inactive-bg:   #4A5162;
@@ -2821,15 +2867,18 @@ body.text-lg .job-item-text { font-size: 15px; }
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.28), 0 1px 1px rgba(0,0,0,0.20);
   --shadow-md: 0 4px 10px rgba(0,0,0,0.32), 0 2px 4px rgba(0,0,0,0.22);
   --shadow-lg: 0 12px 28px rgba(0,0,0,0.40), 0 4px 8px rgba(0,0,0,0.26);
-  --shadow-input-focus: 0 0 0 3px rgba(232,110,116,0.35);
+  --shadow-input-focus: 0 0 0 3px rgba(239,68,68,0.35);
 }
 
 /* Per-department accents — lifted L, reduced C for dark-mode comfort */
+/* Prepress inherits the app red rather than restating it, so changing --accent
+   above also moves the section headings and rules, the toggle switches, and the
+   required-field markers. Mirrors the :root default. */
 [data-theme="dark"] .dept-prepress {
-  --dept-accent:       #E86E74;
-  --dept-accent-hover: #D85D65;
-  --dept-accent-soft:  rgba(232,110,116,0.18);
-  --dept-accent-muted: #A05258;
+  --dept-accent:       var(--accent);
+  --dept-accent-hover: var(--accent-hover);
+  --dept-accent-soft:  var(--accent-soft);
+  --dept-accent-muted: var(--accent-muted);
 }
 [data-theme="dark"] .dept-techservices {
   --dept-accent:       #6A97C2;
@@ -2837,6 +2886,12 @@ body.text-lg .job-item-text { font-size: 15px; }
   --dept-accent-soft:  rgba(106,151,194,0.18);
   --dept-accent-muted: #3E5F7A;
 }
+
+/* Row separators. --border-light is right for panel outlines but too quiet for
+   the hairlines between rows, which are the only thing dividing one work order
+   from the next. */
+[data-theme="dark"] .job-table td,
+[data-theme="dark"] .archive-item { border-bottom-color: #454c57; }
 
 /* ── Targeted overrides for hardcoded colors ── */
 
@@ -2902,7 +2957,7 @@ body.text-lg .job-item-text { font-size: 15px; }
 /* Department tabs — light gray bgs invisible on dark */
 [data-theme="dark"] .dept-tab         { background: #2d3340; color: var(--ink-muted); }
 [data-theme="dark"] .dept-tab:hover   { background: #3a4052; color: var(--ink-soft); }
-[data-theme="dark"] .dept-tab[data-dept="prepress"].active    { background: #E86E74; color: #fff; }
+[data-theme="dark"] .dept-tab[data-dept="prepress"].active    { background: var(--accent); color: #fff; }
 [data-theme="dark"] .dept-tab[data-dept="techservices"].active { background: #6A97C2; color: #fff; }
 
 /* Quick-pick menu hover */
@@ -2971,7 +3026,7 @@ body.text-lg .job-item-text { font-size: 15px; }
 }
 
 /* Dark mode: landing page table overrides */
-[data-theme="dark"] .dept-dot.filled-prepress { background: #E86E74; border-color: #E86E74; }
+[data-theme="dark"] .dept-dot.filled-prepress { background: var(--accent); border-color: var(--accent); }
 [data-theme="dark"] .dept-dot.filled-ts { background: #6A97C2; border-color: #6A97C2; }
 
 /* Specs area softening — dial back the harsh bright whites in field inputs
@@ -3095,4 +3150,84 @@ body.text-lg .job-item-text { font-size: 15px; }
 @keyframes banner-slide-in {
   from { transform: translateY(-100%); }
   to   { transform: translateY(0); }
+}
+/* ── Manage CSRs & Assignees ────────────────────────────────────────── */
+.roster-help {
+  font-size: 12px; color: var(--text-muted, #6b6b7b);
+  margin-bottom: var(--space-md); line-height: 1.5;
+}
+.roster-tabs {
+  display: flex; gap: 4px; margin-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-light); padding-bottom: var(--space-sm);
+}
+.roster-tab {
+  flex: 1; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: transparent; color: var(--text-muted, #6b6b7b);
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+}
+.roster-tab:hover { background: var(--surface-raised); }
+.roster-tab.active {
+  background: var(--surface-raised); color: var(--ink);
+  border-color: var(--border-light);
+}
+.roster-list {
+  max-height: 300px; overflow-y: auto;
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+}
+.roster-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  border-bottom: 1px solid var(--border-light); font-size: 13px;
+}
+.roster-row:last-child { border-bottom: none; }
+.roster-row--off .roster-name { color: var(--text-muted, #6b6b7b); text-decoration: line-through; }
+.roster-row--readonly { color: var(--text-muted, #6b6b7b); }
+.roster-name { flex: 1; }
+.roster-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-muted, #6b6b7b);
+}
+.roster-toggle {
+  font-size: 11px; padding: 3px 9px; cursor: pointer;
+  background: var(--surface-raised); color: var(--ink);
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+}
+.roster-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.roster-empty, .roster-unavailable {
+  padding: 12px; font-size: 12px; color: var(--text-muted, #6b6b7b); line-height: 1.5;
+}
+.roster-unavailable {
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+  margin-bottom: var(--space-sm);
+}
+.roster-add { display: flex; gap: 8px; margin-top: var(--space-sm); }
+.roster-add input {
+  flex: 1; padding: 7px 10px; font-size: 13px;
+  background: var(--surface-raised); color: var(--ink);
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+}
+/* The base .profile-save-btn is width:100% with a top margin; both are wrong
+   next to the input, so it overflowed the box. Size it to its own label. */
+.roster-add .profile-save-btn { flex: none; width: auto; margin-top: 0; padding-left: 18px; padding-right: 18px; }
+.roster-error {
+  margin-top: var(--space-sm); font-size: 12px; color: var(--danger, #cb333b);
+}
+#rosterCleanup {
+  margin-top: var(--space-md); padding-top: var(--space-md);
+  border-top: 1px solid var(--border-light);
+}
+.roster-cleanup-head { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.roster-cleanup-help {
+  font-size: 12px; color: var(--text-muted, #6b6b7b); margin-bottom: var(--space-sm); line-height: 1.5;
+}
+.roster-cleanup-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+}
+.roster-cleanup-name { font-size: 13px; font-weight: 600; }
+.roster-cleanup-count {
+  font-size: 11px; color: var(--text-muted, #6b6b7b); white-space: nowrap;
+}
+.roster-cleanup-select {
+  flex: 1; min-width: 0; padding: 5px 8px; font-size: 12px;
+  background: var(--surface-raised); color: var(--ink);
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
 }

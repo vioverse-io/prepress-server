@@ -103,10 +103,33 @@ window.DEPT_REGISTRY.techservices = {
         return [];
     },
 
-    // Build a single-paragraph operator-to-operator summary from checked fields.
-    // Voice and structure follow documentation/TS_GENERATE_RESEARCH.md.
-    // Section order: meeting-required lead, data conversion, CASS, NCOA, deceased,
-    // dedup/suppression, presort/DP, print. Unchecked fields contribute nothing.
+    // Build an operator-to-operator summary from checked fields.
+    //
+    // Wording follows documentation/TS_GENERATE_RESEARCH.md. The grouping does
+    // not: that report calls for one paragraph, and a full panel produced a
+    // 1000-character block operators called unreadable. Output is now one
+    // labelled paragraph per section, blank-line separated, in the order the
+    // panel is filled in: meeting warning, data conversion, hygiene,
+    // deduplication, print.
+    //
+    // Two rules keep the voice consistent. Every entry is a sentence, never a
+    // "Label: value" fragment, and no sentence carries more than one colon --
+    // several field values are themselves comma-separated lists, so a colon
+    // inside a sentence that already has one reads as two list items.
+    //
+    // Unchecked fields contribute nothing. A component with nothing checked
+    // returns '' so the caller can show its "Nothing to generate" message; it
+    // used to return "<name> instructions." and swallow that path.
+    //
+    // A ticked box whose note is blank only speaks when the tick alone means
+    // something. "Multiple address fields" and "Variables beyond address" are
+    // true on the tick, so they get a fallback sentence. "Addressing fields
+    // used" and "File priorities" are the value, not a fact, so a blank note
+    // stays silent rather than emitting an empty label.
+    //
+    // Reference output for every branch below lives in
+    // dev/fixtures/ts-summary-baseline.txt. Run `node dev/ts-summary.js --check`
+    // after touching this function.
     generateSummary: function(comp) {
         if (!comp) return '';
         const checks = comp.checkboxes || {};
@@ -117,123 +140,188 @@ window.DEPT_REGISTRY.techservices = {
             return (checks[cbId] && (notes[noteId] || '').trim()) ? notes[noteId].trim() : '';
         }
         function chk(cbId) { return !!checks[cbId]; }
+        function cap(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
 
-        const parts = [];
-
-        // Meeting-required leads the paragraph when checked.
-        if (chk('ts_cb90')) {
-            const attendees = (notes['ts_cb90_attendees'] || '').trim();
-            parts.push('Meeting required before kickoff' + (attendees ? ' (attendees: ' + attendees + ')' : '') + '.');
+        // "a", "a and b", "a, b, and c"
+        function list(items) {
+            if (items.length < 2) return items[0] || '';
+            if (items.length === 2) return items[0] + ' and ' + items[1];
+            return items.slice(0, -1).join(', ') + ', and ' + items[items.length - 1];
         }
 
+        // NCOA mover dropdowns read "Mail", "Drop", "Mail to Updated Address".
+        // Turn the chosen value into a predicate. The inputs are not readonly,
+        // so anything unrecognised falls back to naming the value outright.
+        function moverClause(subject, raw) {
+            const value = (raw || '').trim();
+            const lower = value.toLowerCase();
+            if (lower === 'drop') return subject + ' are dropped';
+            if (lower === 'mail') return subject + ' are mailed';
+            if (lower.indexOf('mail to ') === 0) {
+                return subject + ' are mailed to the ' + lower.slice(8).replace(/ address$/, '') + ' address';
+            }
+            return subject + ' are handled as ' + value;
+        }
+
+        const blocks = [];
+        function block(label, sentences) {
+            const kept = sentences.filter(Boolean);
+            if (kept.length) blocks.push((label ? label + ': ' : '') + kept.join(' '));
+        }
+
+        // ─── Meeting warning (leads, unlabelled) ─────────
+        const meeting = [];
+        if (chk('ts_cb90')) {
+            const attendees = (notes['ts_cb90_attendees'] || '').trim();
+            meeting.push('Meeting required before kickoff.');
+            if (attendees) meeting.push('Attendees: ' + attendees + '.');
+        }
+        block('', meeting);
+
         // ─── Data Conversion ─────────────────────────────
+        const data          = [];
         const filePath      = val('ts_fp10',  'ts_fp10n');
         const mailstreams   = val('ts_sp21',  'ts_sp21n');
         const splitCriteria = val('ts_sp22',  'ts_sp22n');
         const addrFields    = val('ts_sp23',  'ts_sp23n');
         const multiAddr     = val('ts_sp24',  'ts_sp24n');
 
-        let opener = name;
-        if (filePath) {
-            opener += ' processes input files staged at ' + filePath;
-        } else if (chk('ts_fp10')) {
-            opener += ' processes the input data file';
-        } else {
-            opener += ' instructions';
-        }
-        if (mailstreams) {
-            const isPlural = !/^1\b/.test(mailstreams);
-            opener += ', split into ' + mailstreams + (isPlural ? ' mailstreams' : ' mailstream');
-            if (splitCriteria) opener += ' by ' + splitCriteria;
-        } else if (chk('ts_sp21')) {
-            opener += ', split into multiple mailstreams';
-            if (splitCriteria) opener += ' by ' + splitCriteria;
-        }
-        parts.push(opener + '.');
+        let lead = '';
+        if (filePath)            lead = name + ' processes input files staged at ' + filePath;
+        else if (chk('ts_fp10')) lead = name + ' processes the input data file';
 
-        if (addrFields) parts.push('Addressing pulls from ' + addrFields + '.');
-        if (multiAddr)  parts.push('Multiple address fields present, using ' + multiAddr + '.');
+        let split = '';
+        if (mailstreams)         split = 'split into ' + mailstreams + (/^1\b/.test(mailstreams) ? ' mailstream' : ' mailstreams');
+        else if (chk('ts_sp21')) split = 'split into multiple mailstreams';
+        if (split && splitCriteria)  split += ' by ' + splitCriteria;
+        else if (splitCriteria)      split = 'split by ' + splitCriteria;
 
-        // ─── CASS ───────────────────────────────────────
+        if (lead && split) data.push(lead + ', ' + split + '.');
+        else if (lead)     data.push(lead + '.');
+        else if (split)    data.push(name + ' is ' + split + '.');
+
+        if (addrFields)          data.push('Addressing pulls from ' + addrFields + '.');
+        if (multiAddr)           data.push('Multiple address fields are present, using ' + multiAddr + '.');
+        else if (chk('ts_sp24')) data.push('Multiple address fields are present.');
+        block('Data conversion', data);
+
+        // ─── Hygiene (CASS, NCOA, deceased) ─────────────
+        const hygiene = [];
+
+        const cassDrops = [];
+        if (chk('ts_cb30a')) cassDrops.push('USPS-flagged vacants');
+        if (chk('ts_cb30b')) cassDrops.push('phantom carrier routes (R777, R778)');
+        if (chk('ts_cb30c')) cassDrops.push('CASS errors over 90');
         if (chk('ts_cb30')) {
-            const cassClauses = [];
-            if (chk('ts_cb30a')) cassClauses.push('drop USPS-flagged vacants');
-            if (chk('ts_cb30b')) cassClauses.push('drop phantom carrier routes (R777, R778)');
-            if (chk('ts_cb30c')) cassClauses.push('drop CASS errors over 90');
-            parts.push('CASS-certified address standardization with DPV' +
-                       (cassClauses.length ? ', ' + cassClauses.join(', ') : '') + '.');
+            hygiene.push('CASS-certified address standardization with DPV' +
+                         (cassDrops.length ? ', dropping ' + list(cassDrops) : '') + '.');
+        } else if (cassDrops.length) {
+            hygiene.push('Address pass drops ' + list(cassDrops) + '.');
         }
 
-        // ─── NCOA ───────────────────────────────────────
-        if (chk('ts_cb31')) {
-            const ncoaClauses = [];
-            if (chk('ts_cb31a'))      ncoaClauses.push('client review required before mail file is finalized');
-            if (chk('ts_cb31b_nna')) {
-                const nnaAction = (notes['ts_cb31b_nna_n'] || '').trim().toLowerCase();
-                ncoaClauses.push('movers w/ no new address' + (nnaAction ? ': ' + nnaAction : ''));
-            }
-            if (chk('ts_cb31b_new')) {
-                const newAction = (notes['ts_cb31b_new_n'] || '').trim().toLowerCase();
-                ncoaClauses.push('movers w/ new address' + (newAction ? ': ' + newAction : ''));
-            }
-            let ncoaText = 'NCOALink move update against the 48-month database';
-            if (ncoaClauses.length) ncoaText += '; ' + ncoaClauses.join(', ');
-            parts.push(ncoaText + '.');
-        }
+        if (chk('ts_cb31')) hygiene.push('NCOALink move update against the 48-month database.');
 
-        // ─── Deceased ───────────────────────────────────
+        // Movers with an action chosen become a statement; movers left blank
+        // become one instruction to go and choose, rather than a bare label.
+        const moverStated  = [];
+        const moverPending = [];
+        [
+            { cb: 'ts_cb31b_nna', note: 'ts_cb31b_nna_n', subject: 'movers with no new address' },
+            { cb: 'ts_cb31b_new', note: 'ts_cb31b_new_n', subject: 'movers with a new address' }
+        ].forEach(m => {
+            if (!chk(m.cb)) return;
+            const action = (notes[m.note] || '').trim();
+            if (action) moverStated.push(moverClause(m.subject, action));
+            else        moverPending.push(m.subject);
+        });
+        if (moverStated.length)  hygiene.push(cap(moverStated.join('; ')) + '.');
+        if (moverPending.length) hygiene.push('Confirm handling for ' + list(moverPending) + '.');
+
+        if (chk('ts_cb31a')) hygiene.push('Client review is required before the mail file is finalized.');
+
         if (chk('ts_cb31c')) {
-            let deceasedText = 'Deceased suppression via DDNC';
-            deceasedText += chk('ts_cb31c_drop') ? '; deceased records dropped' : '; deceased records flagged';
-            parts.push(deceasedText + '.');
+            hygiene.push('Deceased suppression via DDNC; deceased records are ' +
+                         (chk('ts_cb31c_drop') ? 'dropped' : 'flagged') + '.');
+        } else if (chk('ts_cb31c_drop')) {
+            hygiene.push('Deceased records are dropped.');
         }
+        block('Hygiene', hygiene);
 
-        // ─── Deduplication / Suppression ─────────────────
-        const dedupMethod      = val('ts_sp30', 'ts_sp30n');
-        if (dedupMethod)              parts.push('Deduped at the ' + dedupMethod + ' level.');
-        else if (chk('ts_sp30'))      parts.push('Deduplication pass.');
-
-        const filePriorities   = val('ts_sp41', 'ts_sp41n');
-        if (filePriorities)           parts.push('File priority: ' + filePriorities + '.');
+        // ─── Deduplication / Suppression / Matching ─────
+        const dedup          = [];
+        const dedupMethod    = val('ts_sp30', 'ts_sp30n');
+        const filePriorities = val('ts_sp41', 'ts_sp41n');
+        const prioritySuffix = filePriorities ? ', priority ' + filePriorities : '';
+        if (dedupMethod)         dedup.push('Deduped at the ' + dedupMethod + ' level' + prioritySuffix + '.');
+        else if (chk('ts_sp30')) dedup.push('Deduplication pass' + prioritySuffix + '.');
+        else if (filePriorities) dedup.push('File priority is ' + filePriorities + '.');
 
         const suppressionMatch = val('ts_sp40', 'ts_sp40n');
-        if (suppressionMatch)         parts.push('Suppress against client-supplied DNM list, matched by ' + suppressionMatch + '.');
-        else if (chk('ts_sp40'))      parts.push('Suppress against client-supplied DNM list.');
+        if (suppressionMatch)    dedup.push('Suppress against the client-supplied DNM list, matched by ' + suppressionMatch + '.');
+        else if (chk('ts_sp40')) dedup.push('Suppress against the client-supplied DNM list.');
 
-        // ─── Other (Matching / Casing) ──────────────────
-        const otherClauses = [];
+        // Checkbox-only row -- index.html gives ts_sp42 no note input, so the
+        // ts_sp42n entry in PRINT_SECTIONS never holds a value.
+        if (chk('ts_sp42')) dedup.push('Rollup and table relationships applied.');
+
+        const matchVal = val('ts_cb50a', 'ts_cb50a_n');
         if (chk('ts_cb50a')) {
-            const matchVal = (notes['ts_cb50a_n'] || '').trim();
-            otherClauses.push(matchVal ? matchVal + ' match job' : 'match job');
+            dedup.push(cap(matchVal ? matchVal + ' match job' : 'match job') +
+                       (chk('ts_cb50b') ? ' with match/append.' : '.'));
+        } else if (chk('ts_cb50b')) {
+            dedup.push('Match/append pass.');
         }
-        if (chk('ts_cb50b')) otherClauses.push('match/append');
+
+        // Casing values pair a case treatment with a punctuation treatment
+        // ("Upper/Lower, No Punctuation"). Split them so the comma inside the
+        // value does not read as a second list item.
         const casingVal = val('ts_sp51', 'ts_sp51n');
-        if (casingVal) otherClauses.push('casing: ' + casingVal);
-        else if (chk('ts_sp51')) otherClauses.push('casing');
-        if (otherClauses.length) parts.push('Other processing: ' + otherClauses.join(', ') + '.');
+        if (casingVal) {
+            const commaIdx = casingVal.indexOf(',');
+            dedup.push(commaIdx === -1
+                ? 'Casing is ' + casingVal + '.'
+                : 'Casing is ' + casingVal.slice(0, commaIdx).trim() + ' with ' +
+                  casingVal.slice(commaIdx + 1).trim().toLowerCase() + '.');
+        } else if (chk('ts_sp51')) {
+            dedup.push('Confirm the casing treatment.');
+        }
+        block('Deduplication', dedup);
 
         // ─── Print ──────────────────────────────────────
+        const print          = [];
         const variableFields = val('ts_sp91', 'ts_sp91n');
-        if (variableFields) parts.push('Variable fields beyond address: ' + variableFields + '.');
+        if (variableFields)      print.push('Variable fields beyond the address: ' + variableFields + '.');
+        else if (chk('ts_sp91')) print.push('Variable fields beyond the address are in use.');
 
+        // ts_sp93a is free text and holds either a count ("2") or the party who
+        // signs off ("Acme HQ"), so the clause has to suit both.
         const numLetterVersions  = val('ts_sp92',  'ts_sp92n');
         const signoffsPerVersion = val('ts_sp93a', 'ts_sp93an');
+        let signoffClause = '';
+        if (signoffsPerVersion) {
+            signoffClause = /^\d+$/.test(signoffsPerVersion)
+                ? signoffsPerVersion + ' signoff' + (signoffsPerVersion === '1' ? '' : 's') + ' per version'
+                : 'signed off by ' + signoffsPerVersion;
+        }
         if (numLetterVersions) {
             const isOne = parseInt(numLetterVersions, 10) === 1;
-            let lvText = numLetterVersions + ' letter version' + (isOne ? '' : 's');
-            if (signoffsPerVersion) lvText += ', ' + signoffsPerVersion + ' signoffs per version';
-            parts.push(lvText + '.');
-        } else if (signoffsPerVersion) {
-            parts.push('Signoffs per version: ' + signoffsPerVersion + '.');
+            print.push(numLetterVersions + ' letter version' + (isOne ? '' : 's') +
+                       (signoffClause ? ', ' + signoffClause : '') + '.');
+        } else if (signoffClause) {
+            print.push(cap(signoffClause) + '.');
         }
 
         const samplesCount = val('ts_sp95', 'ts_sp95n');
         const samplesAddr  = val('ts_sp94', 'ts_sp94n');
-        if (samplesCount && samplesAddr) parts.push(samplesCount + ' samples per version addressed to ' + samplesAddr + '.');
-        else if (samplesCount)           parts.push(samplesCount + ' samples per version.');
-        else if (samplesAddr)            parts.push('Samples addressed to ' + samplesAddr + '.');
+        if (samplesCount) {
+            print.push(samplesCount + ' sample' + (/^1\b/.test(samplesCount) ? '' : 's') + ' per version' +
+                       (samplesAddr ? ' addressed to ' + samplesAddr : '') + '.');
+        } else if (samplesAddr) {
+            print.push('Samples addressed to ' + samplesAddr + '.');
+        }
+        block('Print', print);
 
-        return parts.join(' ');
+        return blocks.join('\n\n');
     },
 
     // No envelope-only logic yet (TBD T2). First pass: always return false.

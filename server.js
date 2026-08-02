@@ -55,6 +55,217 @@ app.post('/api/verify-admin', (req, res) => {
     res.json({ verified: hash === ADMIN_HASH });
 });
 
+// ── Roster (CSRs and department assignees) ──
+//
+// These lists used to be hardcoded in the frontend, so adding a CSR or
+// retiring one meant editing app.js and having IT swap the file. They live in
+// a table now and are managed from the app.
+//
+// Every failure path here is deliberately soft. If the table cannot be created
+// or read, the routes return an empty roster and the frontend falls back to
+// the constants it has always used, so a roster problem can never stop people
+// working on jobs.
+
+const ROSTER_KINDS = ['csr', 'prepress', 'techservices'];
+
+// Which job column each list drives. Fixed whitelist -- these three strings are
+// the only values ever interpolated into the usage/reassign SQL below, so a
+// client cannot steer the column.
+const ROSTER_COLUMN = {
+    csr:          'csrName',
+    prepress:     'assignedToPrepress',
+    techservices: 'assignedToTechservices'
+};
+
+function isAdmin(password) {
+    if (!password) return false;
+    return crypto.createHash('sha256').update(password).digest('hex') === ADMIN_HASH;
+}
+
+let _rosterReady = false;
+
+// Creates the table on first use and seeds it from the defaults the frontend
+// sends. Seeding only happens when the table is empty, so it never resurrects
+// a name that was deliberately deactivated.
+async function ensureRoster(seed) {
+    if (_rosterReady) return true;
+    try {
+        const pool = await getPool();
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='roster' AND xtype='U')
+            CREATE TABLE roster (
+                id        INT IDENTITY(1,1) PRIMARY KEY,
+                kind      NVARCHAR(20)  NOT NULL,
+                name      NVARCHAR(100) NOT NULL,
+                active    BIT           NOT NULL DEFAULT 1,
+                addedBy   NVARCHAR(100) DEFAULT '',
+                addedDate NVARCHAR(30)  DEFAULT ''
+            )
+        `);
+
+        if (seed && typeof seed === 'object') {
+            const count = await pool.request().query('SELECT COUNT(*) AS n FROM roster');
+            if (count.recordset[0].n === 0) {
+                const now = new Date().toISOString();
+                for (const kind of ROSTER_KINDS) {
+                    for (const name of (seed[kind] || [])) {
+                        if (!name || !String(name).trim()) continue;
+                        await pool.request()
+                            .input('kind', kind)
+                            .input('name', String(name).trim())
+                            .input('addedDate', now)
+                            .query(`INSERT INTO roster (kind, name, active, addedBy, addedDate)
+                                    VALUES (@kind, @name, 1, 'seed', @addedDate)`);
+                    }
+                }
+                console.log('Roster table seeded from frontend defaults');
+            }
+        }
+        _rosterReady = true;
+        return true;
+    } catch (err) {
+        // Most likely the app's SQL account lacks CREATE TABLE rights. Say so
+        // once, plainly, and keep serving. The frontend falls back on its own.
+        console.error('Roster table unavailable: ' + err.message);
+        console.error('The app still works; the CSR and assignee lists fall back to their built-in values.');
+        console.error('To enable editing them in the app, run this once in SSMS against ' + (process.env.SQL_DATABASE || 'STS_WorkOrder') + ':');
+        console.error("  CREATE TABLE roster (id INT IDENTITY(1,1) PRIMARY KEY, kind NVARCHAR(20) NOT NULL, name NVARCHAR(100) NOT NULL, active BIT NOT NULL DEFAULT 1, addedBy NVARCHAR(100) DEFAULT '', addedDate NVARCHAR(30) DEFAULT '');");
+        console.error('  ...or grant the service account db_ddladmin and restart.');
+        return false;
+    }
+}
+
+// GET /api/roster -- the frontend posts its built-in lists as the seed on the
+// first call, so the table starts life matching exactly what shipped.
+app.post('/api/roster', async (req, res) => {
+    const ok = await ensureRoster(req.body && req.body.seed);
+    if (!ok) return res.json({ available: false, people: [] });
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(
+            'SELECT id, kind, name, active FROM roster ORDER BY kind, name'
+        );
+        res.json({ available: true, people: result.recordset });
+    } catch (err) {
+        // The table was reachable at ensureRoster() but the read failed. Clear
+        // the ready flag so the next call rebuilds it, instead of latching the
+        // roster off until a restart.
+        _rosterReady = false;
+        res.json({ available: false, people: [], error: err.message });
+    }
+});
+
+// Add a name. Admin password is verified here, not trusted from the client.
+app.post('/api/roster/add', async (req, res) => {
+    const { kind, name, password, addedBy } = req.body || {};
+    if (!isAdmin(password)) return res.status(403).json({ error: 'Admin password required' });
+    if (!ROSTER_KINDS.includes(kind)) return res.status(400).json({ error: 'Unknown list' });
+    const clean = (name || '').trim();
+    if (!clean) return res.status(400).json({ error: 'Name is required' });
+
+    const ok = await ensureRoster(null);
+    if (!ok) return res.status(503).json({ error: 'Roster table unavailable' });
+    try {
+        const pool = await getPool();
+        // Case-insensitive duplicate check. If the name is already there but
+        // deactivated, reactivate it rather than creating a second row.
+        const existing = await pool.request()
+            .input('kind', kind).input('name', clean)
+            .query('SELECT id, active FROM roster WHERE kind = @kind AND name = @name');
+        if (existing.recordset.length > 0) {
+            const row = existing.recordset[0];
+            if (!row.active) {
+                await pool.request().input('id', row.id)
+                    .query('UPDATE roster SET active = 1 WHERE id = @id');
+                return res.json({ reactivated: true, id: row.id });
+            }
+            return res.status(409).json({ error: 'That name is already on the list' });
+        }
+        const ins = await pool.request()
+            .input('kind', kind).input('name', clean)
+            .input('addedBy', (addedBy || '').trim())
+            .input('addedDate', new Date().toISOString())
+            .query(`INSERT INTO roster (kind, name, active, addedBy, addedDate)
+                    OUTPUT INSERTED.id VALUES (@kind, @name, 1, @addedBy, @addedDate)`);
+        res.json({ added: true, id: ins.recordset[0].id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Activate or deactivate. Never deletes: existing jobs still carry the name,
+// and the landing filter still needs to offer it for those jobs.
+app.put('/api/roster/:id', async (req, res) => {
+    const { active, password } = req.body || {};
+    if (!isAdmin(password)) return res.status(403).json({ error: 'Admin password required' });
+    const ok = await ensureRoster(null);
+    if (!ok) return res.status(503).json({ error: 'Roster table unavailable' });
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', parseInt(req.params.id, 10))
+            .input('active', active ? 1 : 0)
+            .query('UPDATE roster SET active = @active WHERE id = @id');
+        if (result.rowsAffected[0] === 0) return res.status(404).json({ error: 'Not found' });
+        res.json({ updated: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/roster/usage -- every distinct person-name actually stamped on a
+// job (active AND archived), per list, with a count. The cleanup UI compares
+// this against the roster to show which old imported names still need merging.
+app.get('/api/roster/usage', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const usage = {};
+        for (const kind of ROSTER_KINDS) {
+            const col = ROSTER_COLUMN[kind];
+            const r = await pool.request().query(
+                `SELECT LTRIM(RTRIM(${col})) AS name, COUNT(*) AS count
+                 FROM jobs
+                 WHERE LTRIM(RTRIM(ISNULL(${col}, ''))) <> ''
+                 GROUP BY LTRIM(RTRIM(${col}))
+                 ORDER BY name`
+            );
+            usage[kind] = r.recordset;
+        }
+        res.json({ usage });
+    } catch (err) {
+        res.json({ usage: null, error: err.message });
+    }
+});
+
+// POST /api/roster/reassign -- move every job whose column matches fromName
+// (case-insensitive, trimmed) onto toName. This is the bulk merge: one call
+// turns all of "Brandy", "Brandi" etc. into "Brandilee Czajkowski". Covers
+// archived jobs too, since they share the table.
+//
+// rowVersion is not bumped, matching sql/fix-user-names.sql: these are old
+// imported jobs nobody is actively editing, and not bumping avoids handing any
+// open browser a false conflict.
+app.post('/api/roster/reassign', async (req, res) => {
+    const { kind, fromName, toName, password } = req.body || {};
+    if (!isAdmin(password)) return res.status(403).json({ error: 'Admin password required' });
+    const col = ROSTER_COLUMN[kind];
+    if (!col) return res.status(400).json({ error: 'Unknown list' });
+    const from = (fromName || '').trim();
+    const to   = (toName   || '').trim();
+    if (!from || !to) return res.status(400).json({ error: 'Both names are required' });
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('from', from)
+            .input('to', to)
+            .query(`UPDATE jobs SET ${col} = @to
+                    WHERE LTRIM(RTRIM(${col})) = @from AND ${col} <> @to`);
+        res.json({ moved: result.rowsAffected[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── Jobs: List active ──
 
 app.get('/api/jobs', async (req, res) => {

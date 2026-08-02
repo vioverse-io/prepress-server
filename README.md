@@ -75,6 +75,8 @@ Steps:
   ALTER TABLE jobs ADD status NVARCHAR(20) DEFAULT 'new';
   ```
   This is also at the bottom of `sql\create-tables.sql`, guarded and safe to re-run. Without it, job status changes do not persist across reloads.
+- **Old user names (run once, only if needed):** jobs imported from the pre-database version carry whatever name the user typed at the time, so one person can appear as several ("Stef", "STEF", "Stephanie"). Open `sql\fix-user-names.sql` in SSMS and follow the sections in order. Stop the service first. It audits, previews, backs up and then updates, and it is safe to re-run. Skip this if the audit in section 1 shows no duplicates.
+- **CSR / assignee lists (automatic, one check):** the CSR and assignee lists are now editable in the app, under the "..." menu > Manage CSRs & Assignees (admin password required). They live in a `roster` table the server creates by itself on first start. Nothing to run. If, on first start after this update, the server log prints "Roster table unavailable", the service account lacks permission to create a table: either grant it `db_ddladmin` on `STS_WorkOrder` and restart, or run the single `CREATE TABLE roster (...)` statement the log prints. The app works either way; without the table it just falls back to its built-in lists and the manage screen is read-only. That same Manage screen also lets a manager merge old duplicate names (e.g. "Brandy" and "Brandi" onto "Brandilee Czajkowski") across all jobs at once, so `fix-user-names.sql` is only needed for the "created by" column, which the app does not edit.
 
 ## Troubleshooting
 

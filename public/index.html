@@ -70,6 +70,8 @@
           Text Size
         </div>
         <div class="more-dropdown-sep"></div>
+        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); openRosterModal()">Manage CSRs &amp; Assignees</div>
+        <div class="more-dropdown-sep"></div>
       </div>
     </div>
     <button class="nav-btn" onclick="archiveJob()" title="Archive this job"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></button>
@@ -385,6 +387,7 @@
             <th onclick="setSortColumn('due')">Signoff Due <span class="sort-arrow active" id="sort-due">&#9652;</span></th>
             <th onclick="setSortColumn('status')">Status</th>
             <th>Depts</th>
+            <th onclick="setSortColumn('dateCreated')">Created <span class="sort-arrow" id="sort-dateCreated"></span></th>
           </tr>
         </thead>
         <tbody id="jobTableBody"></tbody>
@@ -394,7 +397,22 @@
 
     <!-- Bottom: Archive + Templates -->
     <div class="bottom-row">
-      <div class="bottom-section" id="archivedJobs"></div>
+      <!-- Header is static markup so the search box survives re-rendering.
+           renderArchivePage() only rewrites #archiveList below it. -->
+      <div class="bottom-section" id="archivedJobs" hidden>
+        <div class="bottom-section-header">
+          <span class="bottom-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>Archived</span>
+          <span class="bottom-count" id="archiveCount">0</span>
+          <input type="text" class="archive-search" id="archiveSearchInput" placeholder="Search archive..." autocomplete="off">
+          <select class="archive-page-size" id="archivePageSizeSelect" onchange="setArchivePageSize(this.value)">
+            <option value="10">10 per page</option>
+            <option value="25">25 per page</option>
+            <option value="50">50 per page</option>
+            <option value="100">100 per page</option>
+          </select>
+        </div>
+        <div id="archiveList"></div>
+      </div>
       <div class="bottom-section" id="templatesCol"></div>
     </div>
   </div>
@@ -1299,6 +1317,7 @@
         </ul>
         <h4>Columns</h4>
         <ul>
+          <li><strong>Created</strong> -- the date and time the job was entered into the system. Click the header to sort by it, newest first. This is when the record was made, not the customer's in-hands date.</li>
           <li><strong>Assigned</strong> -- shows one department's assignee at a time. Click <strong>CS</strong> or <strong>TS</strong> in the header to switch.</li>
           <li><strong>Signoff Due</strong> -- shows the earlier of the two department due dates. Red "OVERDUE" tag for past-due jobs, amber "DUE SOON" within 12 hours. Complete and Cancelled jobs show muted text.</li>
           <li><strong>Status</strong> -- click the status badge on any row to change it (New, In Progress, On Hold, Complete, Cancelled).</li>
@@ -1314,6 +1333,7 @@
         <h3>Archived Jobs</h3>
         <p>Archived jobs move out of the main table into the <strong>Archived</strong> panel below it. Nothing is deleted -- archiving just clears the job off the active list.</p>
         <ul>
+          <li><strong>Search</strong> -- the box in the panel header filters the archive by job number, client, and project name. It searches archived jobs only; the job table above has its own separate search. The count badge shows "3 of 27" while a search is active.</li>
           <li><strong>Paging</strong> -- the panel shows 10 archived jobs at a time, newest first. Use <strong>Prev</strong> / <strong>Next</strong> at the bottom of the panel to move through pages.</li>
           <li><strong>Per page</strong> -- the dropdown in the panel header switches between 10, 25, 50, and 100 at a time. This dropdown controls the archive panel only; the job table has its own separate one.</li>
           <li><strong>Restore</strong> -- click the job name or the <strong>Restore</strong> button to move it back to the active list.</li>
@@ -1449,6 +1469,47 @@
 </div>
 
 <!-- ═══ ADMIN PASSWORD MODAL ═══ -->
+<!-- Manage CSRs & Assignees. Adding and deactivating both need the admin
+     password, which is checked on the server, not here. -->
+<div id="rosterModal" class="modal">
+  <div class="modal-content" style="max-width:520px;">
+    <h3 style="margin-bottom:var(--space-sm);">Manage CSRs &amp; Assignees</h3>
+    <p class="roster-help">Names people can be picked from. Someone who leaves is turned off, not deleted, so their old jobs keep their name and still show up in the filters.</p>
+
+    <div class="roster-tabs">
+      <button class="roster-tab active" data-kind="csr" onclick="switchRosterTab('csr')">CSRs</button>
+      <button class="roster-tab" data-kind="prepress" onclick="switchRosterTab('prepress')">Prepress</button>
+      <button class="roster-tab" data-kind="techservices" onclick="switchRosterTab('techservices')">Tech Services</button>
+    </div>
+
+    <div id="rosterUnavailable" class="roster-unavailable" style="display:none;">
+      These lists cannot be edited yet. The app is using its built-in names.
+      Ask IT to check the server log for the one-line setup step.
+    </div>
+
+    <div id="rosterList" class="roster-list"></div>
+
+    <div class="roster-add">
+      <input type="text" id="rosterNewName" placeholder="Add a name..." autocomplete="off"
+             onkeydown="if(event.key==='Enter')addRosterName();">
+      <button class="profile-save-btn" onclick="addRosterName()">Add</button>
+    </div>
+    <div class="roster-error" id="rosterError" style="display:none;"></div>
+
+    <!-- Cleanup: old names sitting on jobs that are not on the list above.
+         Each can be swept onto the correct name across every job at once. -->
+    <div id="rosterCleanup" style="display:none;">
+      <div class="roster-cleanup-head">Old names on jobs (not on the list)</div>
+      <p class="roster-cleanup-help">These names are on existing jobs but are not on the list above -- usually different spellings of the same person from before. Move each one onto the correct name and every job that uses it updates at once.</p>
+      <div id="rosterCleanupList"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:var(--space-md);">
+      <button class="profile-cancel-btn" style="flex:1;" onclick="closeRosterModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="adminPasswordModal" class="modal">
   <div class="modal-content" style="max-width:340px;">
     <h3 style="margin-bottom:var(--space-md);">Admin Password</h3>

@@ -46,6 +46,64 @@
     });
     const PIECE_FORMAT_OPTIONS = ["6x9.5\u2033 Envelope", "9x12 Envelope", "A7 Envelope", "Booklet", "Buckslip", "Label", "Letter", "No. 9 BRE Envelope", "No. 10 Envelope", "No. 10 Envelope Window", "Postcard", "Remit", "Self-Mailer", "Sticker"];
     const CSR_NAMES = ["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"];
+
+    // ── Roster: CSR and assignee lists, editable in the app ──────────────
+    //
+    // These lists used to live only in the constants above and in each dept's
+    // ASSIGNEE_OPTIONS, so hiring or losing a CSR meant editing this file and
+    // having IT swap it. They come from the roster table now.
+    //
+    // The constants stay put on purpose. They are the fallback and the seed:
+    // if the table is missing, the account cannot create it, or the fetch
+    // fails, every picker shows exactly what it showed before the roster
+    // existed. A roster problem must never stop anyone working on a job.
+    let _roster = null;   // null means unavailable -- use the built-ins
+
+    function builtInRoster() {
+        const dr = window.DEPT_REGISTRY || {};
+        return {
+            csr:          CSR_NAMES.slice(),
+            prepress:     ((dr.prepress     && dr.prepress.ASSIGNEE_OPTIONS)     || []).slice(),
+            techservices: ((dr.techservices && dr.techservices.ASSIGNEE_OPTIONS) || []).slice()
+        };
+    }
+
+    async function loadRoster() {
+        try {
+            const res = await fetch('/api/roster', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seed: builtInRoster() })
+            });
+            if (!res.ok) { _roster = null; return; }
+            const data = await res.json();
+            _roster = (data && data.available && Array.isArray(data.people)) ? data.people : null;
+        } catch (e) {
+            _roster = null;   // offline or old server: fall back silently
+        }
+    }
+
+    // Active names for one list. Falls back to the built-in list if the roster
+    // is unavailable, and also if it somehow came back empty -- an empty picker
+    // would be worse than a stale one.
+    function rosterNames(kind) {
+        const builtIn = builtInRoster()[kind] || [];
+        if (!_roster) return builtIn;
+        const names = _roster.filter(p => p.kind === kind && p.active).map(p => p.name);
+        return names.length ? names.sort((a, b) => a.localeCompare(b)) : builtIn;
+    }
+
+    // Every entry, active or not, for the management screen.
+    function rosterAll(kind) {
+        if (!_roster) return [];
+        return _roster.filter(p => p.kind === kind)
+                      .slice().sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function rosterEditable() { return _roster !== null; }
+
+    function getCsrNames() { return rosterNames('csr'); }
+    function getAssigneeNames(deptId) { return rosterNames(deptId); }
     // Flat Size dropdown options — standard vs envelope
     const FLAT_SIZES_STANDARD = [
         "3.5\u2033 x 5\u2033",
@@ -742,6 +800,10 @@
         // Detect Windows username (NTLM) before profile init
         await fetchWindowsUser();
 
+        // Roster before anything renders a picker. Never throws: on failure
+        // the accessors fall back to the built-in lists.
+        await loadRoster();
+
         // Init profile
         updateProfileBtn();
         updateLandingGreeting();
@@ -1036,7 +1098,8 @@
             landingSortDir = landingSortDir === 'asc' ? 'desc' : 'asc';
         } else {
             landingSortColumn = col;
-            landingSortDir = col === 'lastModified' ? 'desc' : 'asc';
+            // Date columns are almost always wanted newest-first.
+            landingSortDir = (col === 'lastModified' || col === 'dateCreated') ? 'desc' : 'asc';
         }
         applyLandingFilters();
     }
@@ -1083,13 +1146,13 @@
         if (dropdownId === 'filterCSRDropdown') {
             listId = 'filterCSRList';
             const fromJobs = jobs.map(j => (j.csrName || '').trim()).filter(Boolean);
-            values = [...new Set([...CSR_NAMES, ...fromJobs])].sort();
+            values = [...new Set([...getCsrNames(), ...fromJobs])].sort();
             selectedArr = landingSelectedCSRs;
         } else if (dropdownId === 'filterAssigneeDropdown') {
             listId = 'filterAssigneeList';
             const knownAssignees = [];
             Object.values(window.DEPT_REGISTRY || {}).forEach(dept => {
-                if (dept.ASSIGNEE_OPTIONS) knownAssignees.push(...dept.ASSIGNEE_OPTIONS);
+                if (dept.id) knownAssignees.push(...getAssigneeNames(dept.id));
             });
             const fromJobs = new Set();
             jobs.forEach(j => {
@@ -1147,8 +1210,8 @@
             const added = selected.filter(v => !prev.includes(v));
             if (added.length > 0) {
                 const lastAdded = added[added.length - 1];
-                const prRoster = (window.DEPT_REGISTRY && window.DEPT_REGISTRY.prepress && window.DEPT_REGISTRY.prepress.ASSIGNEE_OPTIONS) || [];
-                const tsRoster = (window.DEPT_REGISTRY && window.DEPT_REGISTRY.techservices && window.DEPT_REGISTRY.techservices.ASSIGNEE_OPTIONS) || [];
+                const prRoster = getAssigneeNames('prepress');
+                const tsRoster = getAssigneeNames('techservices');
                 if (prRoster.includes(lastAdded)) landingAssignedDept = 'cs';
                 else if (tsRoster.includes(lastAdded)) landingAssignedDept = 'ts';
             }
@@ -1259,6 +1322,17 @@
         return { date: months[due.getMonth()] + ' ' + due.getDate(), time: t };
     }
 
+    // Date over time, matching the Signoff Due cell's two-line shape. Muted, so
+    // it reads as reference information rather than competing with the deadline.
+    function renderCreatedCell(job) {
+        if (!job.dateCreated) return '<span class="created-date">--</span>';
+        const d = new Date(job.dateCreated);
+        if (isNaN(d.getTime())) return '<span class="created-date">--</span>';
+        const p = formatDueParts(d);
+        return '<span class="created-date">' + escHtml(p.date) + '</span>' +
+               '<span class="created-time">' + escHtml(p.time) + '</span>';
+    }
+
     function renderDueCell(job) {
         const due = getJobDue(job);
         if (!due) return '<span class="due-time">--</span>';
@@ -1348,6 +1422,7 @@
             case 'csrName': return (job.csrName || '').toLowerCase();
             case 'assignee': return ((landingAssignedDept === 'ts' ? job.assignedToTechservices : job.assignedToPrepress) || '').toLowerCase();
             case 'lastModified': return new Date(job.lastModified || job.dateCreated || 0).getTime();
+            case 'dateCreated': return new Date(job.dateCreated || 0).getTime();
             case 'status': return getJobStatusLabel(job).label;
             case 'due': {
                 if (isTerminalStatus(getJobStatusLabel(job).cls)) return 9e15;
@@ -1381,7 +1456,7 @@
         if (tsBtn) tsBtn.classList.toggle('inactive', landingAssignedDept !== 'ts');
 
         if (jobs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="no-jobs-table-message">' +
+            tbody.innerHTML = '<tr><td colspan="10" class="no-jobs-table-message">' +
                 (landingViewTab === 'my'
                     ? 'No jobs created by you yet.<br><span class="no-jobs-subline">Jobs you create are filed here automatically. Switch to All Jobs to see everything on the board.</span>'
                     : 'No matching jobs') +
@@ -1399,7 +1474,7 @@
                 const gk = groupKeyFor(j);
                 if (gk !== lastGroupKey) {
                     lastGroupKey = gk;
-                    rowsHtml.push('<tr class="group-header-row"><td colspan="9"><span class="group-header-label">' + escHtml(gk) + '</span></td></tr>');
+                    rowsHtml.push('<tr class="group-header-row"><td colspan="10"><span class="group-header-label">' + escHtml(gk) + '</span></td></tr>');
                 }
             }
 
@@ -1422,6 +1497,7 @@
                 '<td class="col-status" onclick="event.stopPropagation(); openStatusPopover(this.querySelector(\'.status-badge\'), \'' + j.id + '\')">' +
                     '<span class="status-badge ' + status.cls + '">' + status.label + '</span></td>' +
                 '<td>' + deptDots + '</td>' +
+                '<td class="col-created">' + renderCreatedCell(j) + '</td>' +
                 '</tr>');
         });
 
@@ -1683,8 +1759,7 @@
     function populateAssigneeSelect(selectId, deptId, currentValue) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        const dept = window.DEPT_REGISTRY[deptId];
-        const roster = (dept && dept.ASSIGNEE_OPTIONS) || [];
+        const roster = getAssigneeNames(deptId);
         sel.innerHTML = '<option value="">Unassigned</option>';
         roster.forEach(name => {
             const opt = document.createElement('option');
@@ -2550,6 +2625,7 @@
 
     let archivePage = 1;
     let archivePageSize = 10;
+    let archiveSearchQuery = '';
     let _archiveCache = [];
 
     async function renderArchivedJobs() {
@@ -2562,13 +2638,51 @@
         renderArchivePage();
     }
 
+    // Filter the cached archive by the search box. Matches only the fields the
+    // archive row actually shows -- job number, client, description -- so every
+    // result is explainable by what is on screen.
+    function filteredArchive() {
+        if (!archiveSearchQuery) return _archiveCache;
+        return _archiveCache.filter(j => {
+            const searchable = (j.jobNumber + ' ' + j.clientName + ' ' + (j.jobDescription || '')).toLowerCase();
+            return searchable.includes(archiveSearchQuery);
+        });
+    }
+
     function renderArchivePage() {
         const container = document.getElementById('archivedJobs');
-        if (!container) return;
-        const archive = _archiveCache;
-        if (archive.length === 0) { container.innerHTML = ''; return; }
-        archive.sort((a, b) => new Date(b.archivedDate || b.lastModified || 0) - new Date(a.archivedDate || a.lastModified || 0));
+        const list = document.getElementById('archiveList');
+        if (!container || !list) return;
 
+        // Nothing archived at all -- hide the whole panel, as before.
+        if (_archiveCache.length === 0) {
+            container.hidden = true;
+            list.innerHTML = '';
+            return;
+        }
+        container.hidden = false;
+        _archiveCache.sort((a, b) => new Date(b.archivedDate || b.lastModified || 0) - new Date(a.archivedDate || a.lastModified || 0));
+
+        const archive = filteredArchive();
+
+        // Count badge says "3 of 27" while a search is active so a filtered
+        // number is never mistaken for the archive total.
+        const countEl = document.getElementById('archiveCount');
+        if (countEl) {
+            countEl.textContent = archiveSearchQuery
+                ? archive.length + ' of ' + _archiveCache.length
+                : String(_archiveCache.length);
+        }
+        const sizeEl = document.getElementById('archivePageSizeSelect');
+        if (sizeEl) sizeEl.value = String(archivePageSize);
+
+        if (archive.length === 0) {
+            list.innerHTML = '<div class="archive-empty">No archived jobs match &ldquo;' +
+                escHtml(archiveSearchQuery) + '&rdquo;.</div>';
+            return;
+        }
+
+        // Pages come off the filtered list, not the full cache.
         const totalPages = Math.ceil(archive.length / archivePageSize);
         if (archivePage > totalPages) archivePage = totalPages;
         if (archivePage < 1) archivePage = 1;
@@ -2589,12 +2703,6 @@
                 '</div>';
         }).join('');
 
-        let pageSizeHtml = '<select class="archive-page-size" onchange="setArchivePageSize(this.value)">';
-        [10, 25, 50, 100].forEach(n => {
-            pageSizeHtml += '<option value="' + n + '"' + (archivePageSize === n ? ' selected' : '') + '>' + n + ' per page</option>';
-        });
-        pageSizeHtml += '</select>';
-
         let paginationHtml = '';
         if (totalPages > 1) {
             paginationHtml = '<div class="archive-pagination">' +
@@ -2604,17 +2712,27 @@
                 '</div>';
         }
 
-        container.innerHTML =
-            '<div class="bottom-section-header">' +
-            '<span class="bottom-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>Archived</span>' +
-            '<span class="bottom-count">' + archive.length + '</span>' +
-            pageSizeHtml +
-            '</div>' +
-            items + paginationHtml;
+        list.innerHTML = items + paginationHtml;
     }
 
     function setArchivePage(p) { archivePage = p; renderArchivePage(); }
     function setArchivePageSize(n) { archivePageSize = parseInt(n, 10); archivePage = 1; renderArchivePage(); }
+
+    // ── Archive search (filters the archive panel only) ──
+    // Mirrors the landing search: 150ms debounce, back to page 1 on every change.
+    (function() {
+        const input = document.getElementById('archiveSearchInput');
+        if (!input) return;
+        let debounceTimer;
+        input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                archiveSearchQuery = input.value.trim().toLowerCase();
+                archivePage = 1;
+                renderArchivePage();
+            }, 150);
+        });
+    })();
 
     async function unarchiveJob(jobId) {
         const active = getActiveJobs();
@@ -2774,6 +2892,16 @@
     // which is unavailable on the LAN (http://192.168.x.x).
 
     let _adminPwResolve = null;
+    // Held only between a successful prompt and the write that follows, so the
+    // server can re-check the password on the write itself instead of trusting
+    // a "yes" from the browser. Cleared as soon as it is read.
+    let _lastAdminPassword = null;
+
+    function takeAdminPassword() {
+        const pw = _lastAdminPassword;
+        _lastAdminPassword = null;
+        return pw;
+    }
 
     async function verifyAdminPassword() {
         return new Promise(resolve => {
@@ -2812,6 +2940,7 @@
             return;
         }
         document.getElementById('adminPasswordModal').style.display = 'none';
+        _lastAdminPassword = pw;
         if (_adminPwResolve) { _adminPwResolve(true); _adminPwResolve = null; }
     }
 
@@ -4068,6 +4197,9 @@ ${sectionsHTML}
     function showWarningModal(title, items, opts) {
         const type = (opts && opts.type) || 'qc';
         const okLabel = (opts && opts.okLabel) || 'Print Anyway';
+        // The cancel button is shared markup, so its label has to be set on every
+        // call, not just when a caller overrides it.
+        const cancelLabel = (opts && opts.cancelLabel) || 'Cancel';
         const showCancel = opts && opts.showCancel !== undefined ? opts.showCancel : type !== 'info';
         return new Promise(resolve => {
             const modal = document.getElementById('qcWarningModal');
@@ -4080,6 +4212,7 @@ ${sectionsHTML}
             modal.dataset.type = type;
             list.innerHTML = items.map(w => '<li>' + escHtml(w) + '</li>').join('');
             btnOk.textContent = okLabel;
+            btnCancel.textContent = cancelLabel;
             btnCancel.style.display = showCancel ? '' : 'none';
 
             modal.style.display = 'block';
@@ -5339,6 +5472,221 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
     });
 
     // ========== AUTO-ACTIVATE TOGGLES ==========
+    // ── Manage CSRs & Assignees ─────────────────────────────────────────
+    // Both add and deactivate ask for the admin password, and the server
+    // re-checks it on every write -- the client is never trusted.
+
+    let _rosterTab = 'csr';
+    let _rosterUsage = null;   // distinct names on jobs, per kind, from the server
+
+    async function loadRosterUsage() {
+        try {
+            const res = await fetch('/api/roster/usage');
+            const data = await res.json();
+            _rosterUsage = (data && data.usage) ? data.usage : null;
+        } catch (e) {
+            _rosterUsage = null;
+        }
+    }
+
+    async function openRosterModal() {
+        _rosterTab = 'csr';
+        document.getElementById('moreDropdown').classList.remove('open');
+        document.getElementById('rosterError').style.display = 'none';
+        document.getElementById('rosterNewName').value = '';
+        await loadRoster();
+        await loadRosterUsage();
+        switchRosterTab('csr');
+        document.getElementById('rosterModal').style.display = 'flex';
+    }
+
+    function closeRosterModal() {
+        document.getElementById('rosterModal').style.display = 'none';
+        // Pickers read the roster live, so refresh anything already on screen.
+        populateCSRDropdowns();
+        applyLandingFilters();
+    }
+
+    function switchRosterTab(kind) {
+        _rosterTab = kind;
+        document.querySelectorAll('.roster-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.kind === kind);
+        });
+        renderRosterList();
+        renderRosterCleanup();
+    }
+
+    // Names that appear on jobs but are not an active roster name for this tab,
+    // i.e. the old imported spellings that need merging. Compared case-
+    // insensitively and trimmed, matching how the server groups and reassigns.
+    function messyNamesFor(kind) {
+        if (!_rosterUsage || !_rosterUsage[kind]) return [];
+        const active = new Set(rosterNames(kind).map(n => n.toLowerCase()));
+        return _rosterUsage[kind]
+            .filter(u => u.name && !active.has(u.name.trim().toLowerCase()))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function renderRosterCleanup() {
+        const wrap = document.getElementById('rosterCleanup');
+        const list = document.getElementById('rosterCleanupList');
+        if (!wrap || !list) return;
+
+        // Only meaningful when the roster is editable and usage loaded.
+        const messy = rosterEditable() ? messyNamesFor(_rosterTab) : [];
+        if (!messy.length) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
+        wrap.style.display = '';
+
+        const targets = rosterNames(_rosterTab);
+        const options = ['<option value="">Move to...</option>']
+            .concat(targets.map(n => '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'))
+            .join('');
+
+        list.innerHTML = messy.map(u => {
+            const jobs = u.count + (u.count === 1 ? ' job' : ' jobs');
+            const enc = escHtml(u.name);
+            return '<div class="roster-cleanup-row">' +
+                '<span class="roster-cleanup-name">' + enc + '</span>' +
+                '<span class="roster-cleanup-count">' + jobs + '</span>' +
+                '<select class="roster-cleanup-select" data-from="' + enc + '">' + options + '</select>' +
+                '<button class="roster-toggle" onclick="reassignRosterName(this)">Move</button>' +
+            '</div>';
+        }).join('');
+    }
+
+    async function reassignRosterName(btn) {
+        showRosterError('');
+        const row = btn.closest('.roster-cleanup-row');
+        const sel = row.querySelector('.roster-cleanup-select');
+        const fromName = sel.dataset.from;
+        const toName = sel.value;
+        if (!toName) { showRosterError('Pick a name to move "' + fromName + '" onto.'); return; }
+
+        const password = await promptAdminPassword();
+        if (!password) return;
+
+        // The server write and the after-refresh are kept separate: only a real
+        // failure of the write shows an error. A hiccup while re-rendering the
+        // views must not masquerade as "the move failed", because it did not.
+        let ok = false;
+        try {
+            const res = await fetch('/api/roster/reassign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind: _rosterTab, fromName: fromName, toName: toName, password: password })
+            });
+            const data = await res.json();
+            if (!res.ok) { showRosterError(data.error || 'Could not move that name.'); return; }
+            ok = true;
+        } catch (e) {
+            showRosterError('Could not reach the server.');
+            return;
+        }
+        if (!ok) return;
+
+        // Reflect the change everywhere: usage list, the job cache the landing
+        // filter reads, the cleanup section, and the table.
+        try {
+            await loadRosterUsage();
+            await refreshJobs();
+            renderRosterCleanup();
+            applyLandingFilters();
+        } catch (e) { /* the move succeeded; a refresh glitch is not an error */ }
+    }
+
+    function renderRosterList() {
+        const list = document.getElementById('rosterList');
+        const unavailable = document.getElementById('rosterUnavailable');
+        const addRow = document.querySelector('.roster-add');
+        if (!list) return;
+
+        if (!rosterEditable()) {
+            unavailable.style.display = '';
+            addRow.style.display = 'none';
+            list.innerHTML = rosterNames(_rosterTab)
+                .map(n => '<div class="roster-row roster-row--readonly">' + escHtml(n) + '</div>').join('');
+            return;
+        }
+        unavailable.style.display = 'none';
+        addRow.style.display = '';
+
+        const rows = rosterAll(_rosterTab);
+        if (!rows.length) { list.innerHTML = '<div class="roster-empty">No names yet.</div>'; return; }
+        list.innerHTML = rows.map(p =>
+            '<div class="roster-row' + (p.active ? '' : ' roster-row--off') + '">' +
+                '<span class="roster-name">' + escHtml(p.name) + '</span>' +
+                (p.active ? '' : '<span class="roster-tag">off</span>') +
+                '<button class="roster-toggle" onclick="setRosterActive(' + p.id + ',' + (p.active ? 'false' : 'true') + ')">' +
+                    (p.active ? 'Turn off' : 'Turn on') +
+                '</button>' +
+            '</div>'
+        ).join('');
+    }
+
+    function showRosterError(msg) {
+        const el = document.getElementById('rosterError');
+        el.textContent = msg;
+        el.style.display = msg ? '' : 'none';
+    }
+
+    // Collects the admin password once per action and hands it to the server
+    // with the write itself.
+    async function promptAdminPassword() {
+        const ok = await verifyAdminPassword();
+        if (!ok) return null;
+        return takeAdminPassword();
+    }
+
+    async function addRosterName() {
+        const input = document.getElementById('rosterNewName');
+        const name = input.value.trim();
+        showRosterError('');
+        if (!name) return;
+
+        const existing = rosterAll(_rosterTab)
+            .find(p => p.name.toLowerCase() === name.toLowerCase());
+        if (existing && existing.active) { showRosterError('That name is already on the list.'); return; }
+
+        const password = await promptAdminPassword();
+        if (!password) return;
+
+        try {
+            const res = await fetch('/api/roster/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind: _rosterTab, name: name, password: password, addedBy: getUserName() })
+            });
+            const data = await res.json();
+            if (!res.ok) { showRosterError(data.error || 'Could not add that name.'); return; }
+            input.value = '';
+            await loadRoster();
+            renderRosterList();
+            renderRosterCleanup();
+        } catch (e) {
+            showRosterError('Could not reach the server.');
+        }
+    }
+
+    async function setRosterActive(id, active) {
+        showRosterError('');
+        const password = await promptAdminPassword();
+        if (!password) return;
+        try {
+            const res = await fetch('/api/roster/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: active, password: password })
+            });
+            const data = await res.json();
+            if (!res.ok) { showRosterError(data.error || 'Could not update that name.'); return; }
+            await loadRoster();
+            renderRosterList();
+            renderRosterCleanup();
+        } catch (e) {
+            showRosterError('Could not reach the server.');
+        }
+    }
+
     function populateCSRDropdowns() {
         // CSR filter is now a multi-select dropdown populated dynamically from job data
         // CSR quick-pick menus in create/edit modals (sync with CSR_NAMES)
@@ -5347,7 +5695,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             if (!wrapper) return;
             const menu = wrapper.querySelector('.quick-pick-menu');
             if (!menu) return;
-            menu.dataset.options = JSON.stringify(CSR_NAMES);
+            menu.dataset.options = JSON.stringify(getCsrNames());
             delete menu.dataset.populated;
             menu.innerHTML = '';
         });
@@ -5689,6 +6037,10 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         if (!currentJobId) return;
         if (fieldEl.dataset.field === 'assignedTo') return startInlineEditAssignee(fieldEl);
         if (fieldEl.dataset.field === 'signoffDue') return startInlineEditSignoffDue(fieldEl);
+        // CSR was the only person field here that was free text, which is how
+        // one person ended up in the filter as "Stef", "STEF" and "Stephanie".
+        // It picks from the roster now, the same way assignedTo always has.
+        if (fieldEl.dataset.field === 'csrName') return startInlineEditCsr(fieldEl);
         if (fieldEl.querySelector('.inline-edit-input')) return; // already editing
 
         const valueSpan = fieldEl.querySelector('.job-field-value');
@@ -5785,8 +6137,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         const job = jobs.find(j => j.id === currentJobId);
         if (!job) return;
 
-        const dept = window.DEPT_REGISTRY[activeDepartment] || window.DEPT_REGISTRY.prepress;
-        const roster = (dept && dept.ASSIGNEE_OPTIONS) || [];
+        const roster = getAssigneeNames(activeDepartment);
         const deptKey = activeDepartment === 'techservices' ? 'assignedToTechservices' : 'assignedToPrepress';
         const currentValue = job[deptKey] || '';
 
@@ -5844,6 +6195,81 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
             if (icon) icon.style.display = '';
             fieldEl.onclick = origOnclick;
         };
+
+        sel.addEventListener('change', commit);
+        sel.addEventListener('blur', commit);
+        sel.addEventListener('keydown', e => {
+            if (e.key === 'Escape') cancel();
+            else if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        });
+    }
+
+    // Inline-edit variant for CSR. A <select> off the roster, so the landing
+    // filter can never gain another spelling of someone already on it.
+    // The job's existing value is kept as an option even when it is not on the
+    // roster (old data, or a CSR since deactivated) so opening the editor and
+    // pressing Escape never silently rewrites the job.
+    function startInlineEditCsr(fieldEl) {
+        if (fieldEl.querySelector('.inline-edit-select')) return; // already editing
+        const jobs = getActiveJobs();
+        const job = jobs.find(j => j.id === currentJobId);
+        if (!job) return;
+
+        const currentValue = (job.csrName || '').trim();
+        const names = getCsrNames().slice();
+        if (currentValue && !names.includes(currentValue)) names.unshift(currentValue);
+
+        const valueSpan = fieldEl.querySelector('.job-field-value');
+        const icon = fieldEl.querySelector('.inline-edit-icon');
+
+        const sel = document.createElement('select');
+        sel.className = 'inline-edit-select';
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = 'Unassigned';
+        sel.appendChild(blank);
+        names.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+        });
+        sel.value = currentValue;
+
+        valueSpan.style.display = 'none';
+        if (icon) icon.style.display = 'none';
+        fieldEl.insertBefore(sel, valueSpan.nextSibling);
+        sel.focus();
+
+        const origOnclick = fieldEl.onclick;
+        fieldEl.onclick = null;
+
+        let finished = false;
+        const restore = () => {
+            sel.remove();
+            valueSpan.style.display = '';
+            if (icon) icon.style.display = '';
+            fieldEl.onclick = origOnclick;
+        };
+        const commit = () => {
+            if (finished) return;
+            finished = true;
+            const newValue = sel.value;
+            const jobs2 = getActiveJobs();
+            const job2 = jobs2.find(j => j.id === currentJobId);
+            if (job2 && job2.csrName !== newValue) {
+                job2.csrName = newValue;
+                job2.headerModified = new Date().toISOString();
+                job2.headerModifiedBy = getUserName();
+                job2.lastModified = new Date().toISOString();
+                job2.lastModifiedBy = getUserName();
+                saveActiveJobs(jobs2);
+                updatePrintHeader(job2);
+                valueSpan.textContent = newValue;
+            }
+            restore();
+        };
+        const cancel = () => { if (finished) return; finished = true; restore(); };
 
         sel.addEventListener('change', commit);
         sel.addEventListener('blur', commit);
@@ -6092,7 +6518,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
         if (showGroup) {
             const showOpts = [
                 { key: 'all', label: 'All', count: null },
-                { key: 'overdue', label: '\u26A0 Overdue', count: overdueCount, kind: 'danger' },
+                { key: 'overdue', label: 'Overdue', count: overdueCount, kind: 'danger' },
                 { key: 'today', label: 'Due Today', count: todayCount, kind: 'amber' }
             ];
             showGroup.innerHTML = showOpts.map(o => {
@@ -6504,7 +6930,7 @@ td:first-child{white-space:nowrap;width:100px;font-weight:600;}
 
         // Prompt to archive when marking complete
         if (statusKey === 'complete') {
-            showWarningModal('Archive this job?', [], { type: 'info', okLabel: 'Yes', showCancel: true }).then(function(yes) {
+            showWarningModal('Archive this job?', [], { type: 'info', okLabel: 'Yes', cancelLabel: 'No', showCancel: true }).then(function(yes) {
                 if (!yes) return;
                 fetch('/api/jobs/' + jobId + '/archive', { method: 'POST' }).then(function(res) {
                     if (!res.ok) { showErrorModal("Couldn't archive this job.", 'Refresh'); return; }
