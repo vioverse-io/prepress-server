@@ -8,41 +8,80 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '5mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Health Check ──
+// Deliberately OPEN, registered before the login gate below, so IT can verify
+// SQL connectivity even when a login problem is blocking the app itself.
 
 app.get('/api/health', async (req, res) => {
     const status = await healthCheck();
     res.status(status.connected ? 200 : 503).json(status);
 });
 
-// ── User Identity (NTLM) ──
+// ── Login gate (NTLM / Windows authentication) ──
+//
+// When NTLM_AUTH=true, everything past this point requires a real Windows
+// login. The browser negotiates NTLM and the credentials are validated against
+// the domain controller named in NTLM_DOMAINCONTROLLER, so a wrong password --
+// or a cancelled login dialog -- is rejected (401/403) instead of being waved
+// through. This is the actual front door, not a name label.
+//
+// A login that is not validated is worse than no login: it looks secure and
+// isn't. So if NTLM_AUTH=true without a domain controller, the app refuses to
+// serve anything and says exactly why. It does NOT quietly accept everyone.
+//
+// When NTLM_AUTH is false or unset (local dev, no domain controller), there is
+// no gate and the user types a profile name by hand. See dev/README.md.
 
-let ntlmMiddleware;
+let gate = null;
+
 if (process.env.NTLM_AUTH === 'true') {
-    try {
+    const dcRaw = (process.env.NTLM_DOMAINCONTROLLER || '').trim();
+
+    if (!dcRaw) {
+        const msg = 'NTLM_AUTH=true but NTLM_DOMAINCONTROLLER is not set. ' +
+            'The app will not start a Windows login it cannot validate. ' +
+            'Add NTLM_DOMAINCONTROLLER=ldap://<your-domain-controller> to .env ' +
+            '(ask IT for the domain controller host), then restart.';
+        console.error('\n*** LOGIN CONFIG ERROR ***\n' + msg + '\n');
+        // Fail closed: every request gets a plain-language explanation. No app,
+        // no data, until a real domain controller is configured.
+        gate = (req, res) => res.status(503).type('text/plain').send('Server misconfigured. ' + msg);
+    } else {
         const ntlm = require('express-ntlm');
-        ntlmMiddleware = ntlm({ debug: function() {} });
-        console.log('NTLM auth enabled -- Windows usernames will be detected');
-    } catch (e) {
-        console.log('express-ntlm not installed -- falling back to manual username');
+        // Comma-separated list allowed for failover between controllers.
+        const domaincontroller = dcRaw.indexOf(',') !== -1
+            ? dcRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
+            : dcRaw;
+        gate = ntlm({
+            debug: function() {},
+            domain: process.env.NTLM_DOMAIN || undefined,
+            domaincontroller: domaincontroller
+        });
+        console.log('NTLM auth enabled -- Windows credentials validated against ' + dcRaw);
     }
+
+    app.use(gate);
 }
 
-if (ntlmMiddleware) {
-    app.get('/api/whoami', ntlmMiddleware, (req, res) => {
-        res.json({
+// ── User Identity ──
+// With the gate above, req.ntlm is present and validated on every request that
+// reaches here. Without the gate (dev), it is absent and the frontend falls
+// back to a typed profile name.
+
+app.get('/api/whoami', (req, res) => {
+    if (req.ntlm && req.ntlm.UserName) {
+        return res.json({
             username: req.ntlm.UserName,
             domain: req.ntlm.DomainName,
             authenticated: true
         });
-    });
-} else {
-    app.get('/api/whoami', (req, res) => {
-        res.json({ username: null, authenticated: false });
-    });
-}
+    }
+    res.json({ username: null, authenticated: false });
+});
+
+// Static app -- served after the gate, so a valid login is required to load it.
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Admin Password Verification ──
 

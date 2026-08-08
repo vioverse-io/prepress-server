@@ -32,12 +32,14 @@ SQL_ENCRYPT=false
 SQL_TRUST_SERVER_CERT=true
 SQL_ODBC_DRIVER=ODBC Driver 18 for SQL Server
 NTLM_AUTH=true
+NTLM_DOMAINCONTROLLER=ldap://your-domain-controller
 PORT=3000
 ```
 
 - **SQL_SERVER:** hostname or IP of the SQL Server. For a named instance (such as SQL Express), use `host\INSTANCENAME` and leave `SQL_PORT` blank.
 - **SQL_ODBC_DRIVER:** the exact name from step 3.
-- **NTLM_AUTH=true:** shows each person's Windows login automatically; they cannot type a different name. Use `false` only for a dev machine with no domain.
+- **NTLM_AUTH=true:** turns on the Windows login gate. Users must sign in with their real Windows username and password; a wrong password or a cancelled dialog is refused. Use `false` only for a dev machine with no domain.
+- **NTLM_DOMAINCONTROLLER:** the domain controller that checks the password, as an LDAP address (for example `ldap://dc01.compumail.local` or `ldap://192.168.3.10`). **Required whenever NTLM_AUTH=true** -- the app will not start without it, because it refuses to run a login it cannot validate. Ask IT (Girard/Joe) for the host if you do not know it. Multiple controllers can be comma-separated for failover.
 - **PORT:** the port the app listens on (for example, 3000).
 
 **5. Install dependencies.** In the app folder, run `npm install`.
@@ -69,7 +71,7 @@ Steps:
 
 ### New steps by version (run once each, in order)
 
-- **Windows login (NTLM):** if your `.env` does not already have `NTLM_AUTH=true`, add it, then run `npm install` (installs the `express-ntlm` package). Without it, users are not auto-identified by their Windows login and can type any name.
+- **Windows login gate (NTLM) -- REQUIRED, do this before starting:** this build makes the Windows login a real gate. Two `.env` keys must both be set: `NTLM_AUTH=true` and `NTLM_DOMAINCONTROLLER=ldap://<your-domain-controller>` (ask IT for the host; see the config table above). Then run `npm install` (installs `express-ntlm`). **The app will not start if `NTLM_AUTH=true` and the domain controller is missing** -- on purpose, because an unchecked login only looks secure. If it will not start, open `http://localhost:<PORT>/api/health` (still works) and check the server console: it prints exactly what to add. Earlier builds accepted any typed name, or let a user cancel the login and get in anyway; this build validates the actual Windows password and refuses both.
 - **Job status:** add the status column in SSMS against `STS_WorkOrder`:
   ```sql
   ALTER TABLE jobs ADD status NVARCHAR(20) DEFAULT 'new';
@@ -83,6 +85,8 @@ Steps:
 - **"Data source name not found, no default driver specified"** -- `SQL_ODBC_DRIVER` does not match an installed driver. Recheck the exact name (step 3).
 - **"TCP Provider: target machine actively refused it"** -- SQL Server is not running or TCP/IP is off (SQL Server Configuration Manager > Protocols), or `SQL_SERVER`/`SQL_PORT` is wrong. For named instances, use `host\INSTANCENAME`, leave `SQL_PORT` blank, and make sure SQL Server Browser is running.
 - **"Login failed"** -- the Windows account running Node lacks access. Grant `db_datareader` + `db_datawriter` in SSMS.
+- **App will not start, or every page shows "Server misconfigured... NTLM_DOMAINCONTROLLER is not set"** -- `NTLM_AUTH=true` but no domain controller was configured. This is intentional: the app refuses to run a login it cannot validate. Add `NTLM_DOMAINCONTROLLER=ldap://<your-domain-controller>` to `.env` (ask IT for the host) and restart. `/api/health` still works while this is being fixed.
+- **Login dialog rejects a correct password, or "500" during login** -- the app cannot reach the domain controller. Check the `NTLM_DOMAINCONTROLLER` address is right, the LDAP port is open from the app server, and the domain controller is reachable (`ping`/`Test-NetConnection`).
 - **Jobs appear in the browser but `/api/jobs` is empty** -- an old `public/js/app.js` is in place. Re-copy the current files (see `DEPLOY_MANIFEST.md`) and restart.
 - **The app looks like an older version** (for example, the Archived panel shows only 5 jobs with a "+N more" link instead of a per-page dropdown and Prev/Next) -- the file swap did not take. Either the new `public/js/app.js` was not copied, or browsers are still serving the cached old one. Re-copy the files from `DEPLOY_MANIFEST.md`, restart the service, then hard-refresh (Ctrl+F5) on each PC. Check the date on `public\js\app.js` in the app folder to confirm which build is actually installed.
 
