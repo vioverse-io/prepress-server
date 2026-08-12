@@ -7,16 +7,184 @@ const { getPool, query, healthCheck, sql } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ── Build identity ──
+//
+// Which build is actually running? On 2026-08-10 nobody could answer that for
+// five hours, because an old server.js process kept serving the new static
+// files -- express.static reads from disk per request, so the frontend looked
+// fully updated while the backend was still the previous build. These two
+// values answer it from outside, over HTTP, without logging into the server.
+//
+// version comes from package.json, so package.json must be swapped ALONGSIDE
+// server.js or this reports the version it just replaced.
+//
+// startedAt is stamped when this process boots, and it is the direct test for
+// the stale-process failure above: if it predates the file swap, the service
+// did not actually restart, whatever the files on disk say.
+let APP_VERSION = 'unknown';
+try {
+    APP_VERSION = require('./package.json').version || 'unknown';
+} catch (e) {
+    // Reported as 'unknown' rather than thrown. A missing or unreadable
+    // package.json must never stop the app serving work orders.
+}
+const STARTED_AT = new Date().toISOString();
+
 app.use(express.json({ limit: '5mb' }));
 
 // ── Health Check ──
 // Deliberately OPEN, registered before the login gate below, so IT can verify
-// SQL connectivity even when a login problem is blocking the app itself.
+// SQL connectivity even when a login problem is blocking the app itself. It
+// carries the build identity for the same reason: during a bad deploy this is
+// routinely the only route still answering.
 
 app.get('/api/health', async (req, res) => {
     const status = await healthCheck();
-    res.status(status.connected ? 200 : 503).json(status);
+    res.status(status.connected ? 200 : 503).json(
+        Object.assign({ version: APP_VERSION, startedAt: STARTED_AT }, status)
+    );
 });
+
+// ── Lockout burst guard ──
+//
+// A wrong sign-in must cost the user ONE failed attempt in Active Directory,
+// not six. Without this it costs about six, and here is why:
+//
+// Loading the app pulls the page plus ten more files, then several API calls.
+// The browser spreads those over up to six simultaneous connections, and NTLM
+// authenticates per connection, not per person. express-ntlm caches its result
+// against the connection but only short-circuits on success, so every one of
+// those connections runs its own check, and every one increments the account's
+// bad-password count in AD. A single typo therefore burned an entire domain
+// lockout allowance on its own -- and that lockout is domain-wide, so it locks
+// the user out of Windows itself, not just this app.
+//
+// So: when a check fails, remember the client briefly and answer directly
+// instead of asking AD again. Confirmed working in production on 2026-08-11:
+// one mistyped sign-in now costs exactly one attempt per browser.
+//
+// Three things learned from watching that live, all of which shape the page below:
+//
+//   1. An attempt is spent only when the sign-in box appears and wrong details
+//      are submitted. Reloading does nothing at all: it neither brings the box
+//      back nor costs an attempt. Hard refresh and clearing site data do not help
+//      either. Quitting the browser entirely and reopening it is the only way to
+//      get the box back, and that is the next attempt.
+//   2. A wrong username costs an attempt exactly like a wrong password does.
+//   3. The domain lockout threshold is 3, and it never expires on its own. Only
+//      IT can unlock an account.
+//
+// The window stays short so a genuine retry is never blocked. Quitting and
+// relaunching a browser takes far longer than this, so in practice the window
+// only ever swallows the parallel burst it exists for.
+//
+// This caps the damage; it cannot prevent a lockout. Three failed attempts still
+// lock the account, and that lockout is domain-wide, so it locks the user out of
+// Windows itself rather than just this app. The durable fix is to stop users
+// typing passwords at all, by adding this site to the Local Intranet zone so
+// domain machines sign in silently.
+
+const FAILURE_WINDOW_MS = 5000;
+
+// Served to a rejected user, so it must be entirely self-contained. Anything it
+// tried to link to -- css/styles.css above all -- sits behind this same gate and
+// would be refused too, and the page would arrive unstyled.
+//
+// So the token values below are COPIED from css/styles.css rather than linked:
+// the :root block from the top of that file, the [data-theme="dark"] block at
+// its dark-mode section. If the palette moves there, move it here too. That
+// duplication is the price of a page that has to render while locked out.
+//
+// The shape copied is the app's own error dialog, the one showErrorModal puts up
+// (index.html #qcWarningModal, styles.css .modal / .modal-content). Note that
+// showErrorModal passes an EMPTY items array and .qc-warning-list:empty is
+// hidden, so a real error in this app is a bold header on a plain card. No
+// coloured callout box. This page follows that.
+//
+// Three deliberate departures from the app, all forced:
+//
+//   1. Font. The app loads DM Sans from fonts.googleapis.com. This page names it
+//      first but ships no @font-face, so it renders in DM Sans only where that
+//      font is installed locally and falls back to system-ui otherwise. An error
+//      page must not block on a network request that may not resolve.
+//   2. Theme. app.js stores the user's choice in localStorage['wo-theme'] and
+//      sets data-theme on <html>. Same origin, so the inline script below reads
+//      it directly. Deliberately NOT prefers-color-scheme: that follows Windows,
+//      and the app follows its own toggle. Matching the app means reading what
+//      the app wrote. No stored value means light, exactly as in the app.
+//   3. No buttons. Every dialog in the app closes onto something. This one has
+//      nothing to close onto: the user is outside the gate, and reloading is
+//      known to do nothing at all. A "Try Again" button here would be a dead
+//      control that teaches the wrong lesson, so the card carries none.
+const FORBIDDEN_PAGE = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign-in failed</title>
+<script>try{if(localStorage.getItem('wo-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
+<style>
+  :root {
+    --ink:#1a1a2e; --ink-soft:#3d3d56;
+    --surface:#f6f5f2; --surface-raised:#ffffff;
+    --modal-backdrop:rgba(0,0,0,0.5);
+    --shadow-lg:0 12px 32px rgba(26,26,46,0.12), 0 4px 8px rgba(26,26,46,0.06);
+  }
+  [data-theme="dark"] {
+    --ink:#ECE9E3; --ink-soft:#C9C5BD;
+    --surface:#22272e; --surface-raised:#2d333b;
+    --modal-backdrop:rgba(0,0,0,0.6);
+    --shadow-lg:0 12px 28px rgba(0,0,0,0.40), 0 4px 8px rgba(0,0,0,0.26);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--surface); color:var(--ink);
+    font-family:'DM Sans', system-ui, sans-serif; }
+  .modal { position:fixed; left:0; top:0; width:100%; height:100%;
+    background:var(--modal-backdrop); overflow:hidden; }
+  .modal-content { background:var(--surface-raised); margin:5% auto; padding:32px;
+    border-radius:14px; width:90%; max-width:480px; box-shadow:var(--shadow-lg); }
+  .header { font-size:15px; font-weight:700; margin-bottom:16px; }
+  p { margin:0 0 12px; font-size:13px; line-height:1.45; color:var(--ink-soft); }
+  p:last-child { margin-bottom:0; }
+</style></head>
+<body>
+  <div class="modal">
+    <div class="modal-content">
+      <div class="header">Your Windows username or password is incorrect.</div>
+      <p>Exit your browser completely, relaunch it, and load the app. The sign-in box will reappear.</p>
+      <p>After three failed attempts, your Windows account will be locked. Submit an IT ticket to unlock it.</p>
+    </div>
+  </div>
+</body></html>`;
+
+const recentFailures = new Map();
+
+function clientKey(req) {
+    return req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+}
+
+function noteFailure(req) {
+    recentFailures.set(clientKey(req), Date.now());
+    // The map only ever holds machines that just failed, but sweep anyway so a
+    // long-running server cannot accumulate entries.
+    if (recentFailures.size > 50) {
+        const cutoff = Date.now() - FAILURE_WINDOW_MS;
+        for (const [k, at] of recentFailures) {
+            if (at < cutoff) recentFailures.delete(k);
+        }
+    }
+}
+
+function burstGuard(req, res, next) {
+    const key = clientKey(req);
+    const failedAt = recentFailures.get(key);
+    if (failedAt === undefined) return next();
+    if (Date.now() - failedAt >= FAILURE_WINDOW_MS) {
+        recentFailures.delete(key);
+        return next();
+    }
+    // Inside the window. Answer without troubling the domain controller, so this
+    // request cannot add to the account's bad-password count.
+    res.status(403).type('html').send(FORBIDDEN_PAGE);
+}
 
 // ── Login gate (NTLM / Windows authentication) ──
 //
@@ -56,11 +224,18 @@ if (process.env.NTLM_AUTH === 'true') {
         gate = ntlm({
             debug: function() {},
             domain: process.env.NTLM_DOMAIN || undefined,
-            domaincontroller: domaincontroller
+            domaincontroller: domaincontroller,
+            // Record the rejection before answering, so the burst guard below can
+            // stop the rest of this page load from spending more attempts.
+            forbidden: function(req, res) {
+                noteFailure(req);
+                res.status(403).type('html').send(FORBIDDEN_PAGE);
+            }
         });
         console.log('NTLM auth enabled -- Windows credentials validated against ' + dcRaw);
     }
 
+    app.use(burstGuard);
     app.use(gate);
 }
 
@@ -790,6 +965,9 @@ function safeParseJSON(str, fallback) {
 // ── Start ──
 
 app.listen(PORT, '0.0.0.0', () => {
+    // Version first, so the service log records which build this boot was. The
+    // daemon log is the one place a restart leaves a permanent trace.
+    console.log(`STS Work Order v${APP_VERSION} starting (${STARTED_AT})`);
     console.log(`Prepress WO server running on port ${PORT}`);
     console.log(`http://localhost:${PORT} (also available on LAN via this machine's IP)`);
 });

@@ -86,9 +86,42 @@ Steps:
 - **"TCP Provider: target machine actively refused it"** -- SQL Server is not running or TCP/IP is off (SQL Server Configuration Manager > Protocols), or `SQL_SERVER`/`SQL_PORT` is wrong. For named instances, use `host\INSTANCENAME`, leave `SQL_PORT` blank, and make sure SQL Server Browser is running.
 - **"Login failed"** -- the Windows account running Node lacks access. Grant `db_datareader` + `db_datawriter` in SSMS.
 - **App will not start, or every page shows "Server misconfigured... NTLM_DOMAINCONTROLLER is not set"** -- `NTLM_AUTH=true` but no domain controller was configured. This is intentional: the app refuses to run a login it cannot validate. Add `NTLM_DOMAINCONTROLLER=ldap://<your-domain-controller>` to `.env` (ask IT for the host) and restart. `/api/health` still works while this is being fixed.
-- **Login dialog rejects a correct password, or "500" during login** -- the app cannot reach the domain controller. Check the `NTLM_DOMAINCONTROLLER` address is right, the LDAP port is open from the app server, and the domain controller is reachable (`ping`/`Test-NetConnection`).
+- **Login dialog rejects a CORRECT password** -- **check whether the account is locked before anything else.** A correct password returning 403 is the signature of an Active Directory lockout, not a misconfiguration. On 2026-08-10 this was chased as an LDAP problem for hours; it was lockout. Only if the account is confirmed unlocked should you check that the `NTLM_DOMAINCONTROLLER` address is right, the LDAP port is open from the app server, and the domain controller is reachable (`ping`/`Test-NetConnection`).
+- **A user says they are locked out of Windows after mistyping in this app** -- see "Sign-in lockout" below.
 - **Jobs appear in the browser but `/api/jobs` is empty** -- an old `public/js/app.js` is in place. Re-copy the current files (see `DEPLOY_MANIFEST.md`) and restart.
 - **The app looks like an older version** (for example, the Archived panel shows only 5 jobs with a "+N more" link instead of a per-page dropdown and Prev/Next) -- the file swap did not take. Either the new `public/js/app.js` was not copied, or browsers are still serving the cached old one. Re-copy the files from `DEPLOY_MANIFEST.md`, restart the service, then hard-refresh (Ctrl+F5) on each PC. Check the date on `public\js\app.js` in the app folder to confirm which build is actually installed.
+
+## Sign-in lockout
+
+A failed sign-in here counts against the user's **domain** account, so enough failures lock them out of Windows itself, not just this app.
+
+The app already limits the damage. NTLM authenticates per connection, and one page load spans about six connections, so a single typo used to spend about six attempts. A burst guard in `server.js` now answers directly for 5 seconds after a failure instead of re-asking the domain controller, which brings one mistyped sign-in down to one attempt. Live since 2026-08-11.
+
+**What to tell a user who mistypes:**
+
+- Reloading does nothing. It does not bring the sign-in box back and does not cost an attempt.
+- Hard refresh and clearing site data do not help either.
+- The only way to try again is to **quit the browser completely and reopen it**.
+- A wrong username costs an attempt exactly as a wrong password does.
+- Switching browsers grants no extra attempts.
+- The threshold on this domain is **3**, and locked accounts do not unlock on their own.
+
+Once locked, the user can keep working in every other program until their screen locks. After that they cannot get back into Windows until IT unlocks the account.
+
+**The permanent fix is a Group Policy change, not an app change.** Add the app URL to the **Local Intranet zone** for domain PCs. Browsers then sign in silently with the logged-in Windows account, nobody types a password, and nothing can be mistyped.
+
+## Checking which version is running
+
+`GET /api/health` returns the build:
+
+```
+{"version":"2.8.0","startedAt":"2026-08-12T00:58:22.121Z","connected":true}
+```
+
+- **No `version` field** means the build is older than 2.8.0.
+- **`startedAt`** is when the service last started. If it is earlier than your file swap, the service did not actually restart. Stop it, confirm it has stopped, check for a leftover `node.exe` in Task Manager, then start it again.
+
+This route stays open in front of the login gate, so it answers even when a login problem is blocking the app. `version` comes from `package.json`, so copy `package.json` whenever you copy `server.js`.
 
 ## Contact
 
