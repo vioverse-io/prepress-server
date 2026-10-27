@@ -40,10 +40,25 @@ window.DEPT_REGISTRY.prepress = {
         "N/A"
     ],
 
+    // Finished Size: plain sizes, shown on every piece after the ones made
+    // from its Flat Size (finishedSizeOptions): the postcards, the buckslip
+    // and the business card, flat or folded (David, 2026-10-15).
+    FINISHED_SIZES_STANDARD: [
+        "6\u2033 x 11\u2033", "6\u2033 x 9\u2033", "4.25\u2033 x 6\u2033", "4\u2033 x 6\u2033",
+        "8.5\u2033 x 3.5\u2033", "3.5\u2033 x 2\u2033", "N/A"
+    ],
+    // Pieces that fold: their Finished Size list adds the flat folded in half
+    // and in thirds.
+    FOLDING_PIECES: /letter|self[- ]?mailer/,
+
     PRESS_STANDARD: ["Canon (color)", "Titan (b&w)", "MCS", "Outside Print", "N/A"],
     PRESS_ENVELOPE: ["Kirk-Rudy", "Outside Print", "N/A"],
 
     ENVELOPE_KEYWORDS: ['envelope', 'no. 9', 'no. 10', 'a7', 'bre'],
+    // Non-envelope pieces that carry their own indicia
+    INDICIA_KEYWORDS: ['postcard', 'self-mailer', 'self mailer'],
+    // Rows grayed out on envelope components: Print marks, Number Up, Head info, Binding info
+    ENVELOPE_DISABLED_FIELDS: ['ps14n', 'ps13n', 'ps10n', 'sp6n'],
 
     // Field data-id for flat size input, press input
     flatSizeFieldId: 'ps3n',
@@ -63,6 +78,42 @@ window.DEPT_REGISTRY.prepress = {
     isEnvelopeComponent: function(name) {
         const lower = (name || '').toLowerCase();
         return this.ENVELOPE_KEYWORDS.some(kw => lower.includes(kw));
+    },
+
+    // Indicia applies to envelopes, postcards, and self-mailers
+    hasIndicia: function(name) {
+        const lower = (name || '').toLowerCase();
+        return this.isEnvelopeComponent(name) || this.INDICIA_KEYWORDS.some(kw => lower.includes(kw));
+    },
+
+    // Note ids of rows that do not apply to this component. They are grayed out on
+    // screen and left out of print, Generate, and the pre-print warnings.
+    // Saved values are kept, so renaming the component brings them back.
+    getDisabledFields: function(comp) {
+        const name = comp ? comp.name : '';
+        const ids = [];
+        if (!this.hasIndicia(name)) ids.push('sp7n');
+        if (this.isEnvelopeComponent(name)) ids.push(...this.ENVELOPE_DISABLED_FIELDS);
+        return ids;
+    },
+
+    // The Finished Size choices for this piece, made each time the list opens
+    // (flatDims as app.js's parseDims reads the Flat Size box, or null): the
+    // flat size itself, on a letter or self-mailer that size folded in half
+    // and in thirds across the long side (8.5 x 11 makes 8.5 x 5.5 and
+    // 8.5 x 3.667), then the standard sizes not already listed.
+    finishedSizeOptions: function(flatDims, name) {
+        const inches = n => String(Math.round(n * 1000) / 1000) + '\u2033';
+        const size = (w, h) => inches(w) + ' x ' + inches(h);
+        const options = [];
+        if (flatDims) {
+            const [w, h] = flatDims;
+            options.push(size(w, h));
+            if (this.FOLDING_PIECES.test((name || '').toLowerCase())) {
+                [2, 3].forEach(parts => options.push(h >= w ? size(w, h / parts) : size(w / parts, h)));
+            }
+        }
+        return options.concat(this.FINISHED_SIZES_STANDARD.filter(s => options.indexOf(s) < 0));
     },
 
     // Get active required fields for this component

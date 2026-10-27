@@ -66,7 +66,7 @@
   padding-left: 48px;
 }
 
-/* ── Narrow numeric fields (e.g., mailstream count, letter version count) ── */
+/* ── Narrow numeric fields (e.g., mailstream count, version count) ── */
 .dept-techservices .field-input--narrow {
   flex: 0 0 auto;
   width: 90px;
@@ -83,11 +83,14 @@
   min-height: 38px !important;
 }
 
-/* ── Paired toggle rows (two cb-only items side by side on one line) ── */
+/* ── Paired toggle rows (two short items side by side on one line). A panel
+      too narrow for both puts the second under the first, so the Match/Append
+      box is never squeezed below its 140px minimum. ── */
 .dept-techservices .field-row-pair {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: var(--space-sm) 24px;
   padding: var(--space-sm) 0;
   min-height: 44px;
 }

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="screen">
 <link href="lib/quill.snow.css" rel="stylesheet">
 <script src="lib/quill.js"></script>
+<script src="lib/purify.min.js"></script>
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/prepress.css">
 <link rel="stylesheet" href="css/techservices.css">
@@ -30,51 +31,51 @@
 
 <!-- ═══ NAVIGATION BAR ═══ -->
 <nav class="nav-bar">
-  <span class="nav-home-btn" onclick="showNoJobState()" title="Back to work orders"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+  <button type="button" class="nav-home-btn" onclick="goHome(event)" title="Back to work orders"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
   <span class="nav-divider"></span>
   <span class="nav-title">STS Work Order</span>
   <div class="nav-spacer"></div>
 
   <input type="checkbox" id="masterCheckbox" style="display:none;">
   <div class="nav-actions">
-    <button class="nav-btn primary" onclick="openNewJobModal()" title="New Work Order"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <button class="nav-btn primary hide-in-view" onclick="openNewJobModal()" title="New Work Order"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     <div class="print-dropdown">
-      <button class="nav-btn" onclick="togglePrintDropdown()" title="Print"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> &#9662;</button>
+      <button class="nav-btn" onclick="togglePrintDropdown(event)" title="Print"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> &#9662;</button>
       <div class="print-dropdown-content" id="printDropdown">
-        <div class="print-dropdown-item" onclick="printChecklist()">Print Current</div>
-        <div class="print-dropdown-item" onclick="printAllComponents()">Print All Components</div>
-        <div class="print-dropdown-item" onclick="printAllComponentsCombined()">Print All as One PDF</div>
+        <div class="print-dropdown-item" tabindex="-1" onclick="printChecklist()">Print Current</div>
+        <div class="print-dropdown-item" tabindex="-1" onclick="printAllComponents()">Print All Components</div>
+        <div class="print-dropdown-item" tabindex="-1" onclick="printAllComponentsCombined()">Print All as One PDF</div>
       </div>
     </div>
     <span class="nav-divider"></span>
-    <button class="nav-btn btn-undo" onclick="undo()" title="Undo (Ctrl+Z)">&#8630;</button>
-    <button class="nav-btn btn-redo" onclick="redo()" title="Redo (Ctrl+Y)">&#8631;</button>
-    <span class="nav-divider"></span>
+    <button class="nav-btn btn-undo hide-in-view" onclick="undo()" title="Undo (Ctrl+Z)">&#8630;</button>
+    <button class="nav-btn btn-redo hide-in-view" onclick="redo()" title="Redo (Ctrl+Y)">&#8631;</button>
+    <span class="nav-divider hide-in-view"></span>
     <div class="more-dropdown">
-      <button class="nav-btn" onclick="toggleMoreDropdown()" title="More actions">&#8943;</button>
+      <button class="nav-btn" onclick="toggleMoreDropdown(event)" title="More actions">&#8943;</button>
       <div class="more-dropdown-content" id="moreDropdown">
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); openEditJobModal()">Edit Job Details</div>
+        <div class="more-dropdown-item hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); openEditJobModal()">Edit Job Details</div>
+        <div class="more-dropdown-sep hide-in-view"></div>
+        <div class="more-dropdown-item hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateJob()">Duplicate Job</div>
+        <div class="more-dropdown-item hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateComponent()">Duplicate Component</div>
+        <div class="more-dropdown-sep hide-in-view"></div>
+        <div class="more-dropdown-item hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); archiveJob()">Archive</div>
+        <div class="more-dropdown-item hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); resetChecklist()">Reset</div>
+        <div class="more-dropdown-item more-dropdown-danger hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); deleteJob()">Delete</div>
+        <div class="more-dropdown-sep hide-in-view"></div>
+        <div class="more-dropdown-item hide-in-view" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); document.getElementById('importFile').click()">Import</div>
+        <div class="more-dropdown-item" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); exportJobs()">Export</div>
         <div class="more-dropdown-sep"></div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateJob()">Duplicate Job</div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); duplicateComponent()">Duplicate Component</div>
-        <div class="more-dropdown-sep"></div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); archiveJob()">Archive</div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); resetChecklist()">Reset</div>
-        <div class="more-dropdown-item more-dropdown-danger" onclick="document.getElementById('moreDropdown').classList.remove('open'); deleteJob()">Delete</div>
-        <div class="more-dropdown-sep"></div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); document.getElementById('importFile').click()">Import</div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); exportJobs()">Export</div>
-        <div class="more-dropdown-sep"></div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); toggleTextSize()">
+        <div class="more-dropdown-item" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); toggleTextSize()">
           <span class="text-scale-btn"><span class="sm">A</span><span class="lg">A</span></span>
           Text Size
         </div>
         <div class="more-dropdown-sep"></div>
-        <div class="more-dropdown-item" onclick="document.getElementById('moreDropdown').classList.remove('open'); openRosterModal()">Manage CSRs &amp; Assignees</div>
+        <div class="more-dropdown-item" tabindex="-1" onclick="document.getElementById('moreDropdown').classList.remove('open'); openRosterModal()">Manage CSRs &amp; Assignees</div>
         <div class="more-dropdown-sep"></div>
       </div>
     </div>
-    <button class="nav-btn" onclick="archiveJob()" title="Archive this job"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></button>
+    <button class="nav-btn hide-in-view" onclick="archiveJob()" title="Archive this job"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></button>
     <button class="nav-btn" onclick="openHelpModal()" title="User Guide"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>
     <button class="nav-btn" onclick="toggleTheme()" title="Toggle dark mode">
       <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -88,12 +89,18 @@
   <div class="nav-spacer"></div>
 
   <a href="https://www.compu-mail.com/" target="_blank" class="nav-brand-label">COMPU-MAIL, LLC</a>
+  <span class="nav-user-name" id="navUserName"></span>
   <div class="profile-wrapper">
     <button class="profile-btn" id="profileBtn" onclick="toggleProfilePopover(event)" title="Profile">
       <svg id="profileBtnIcon" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
     </button>
     <div class="profile-popover" id="profilePopover">
       <div class="profile-popover-title">Your Profile</div>
+      <div class="profile-user">
+        <div class="profile-user-name" id="profileUserName"></div>
+        <div class="profile-user-key" id="profileUserKey"></div>
+        <button type="button" class="profile-photo-btn profile-change-user" id="profileChangeUser" onclick="changeUserFromProfile()">Change user</button>
+      </div>
       <div class="profile-photo-area">
         <div class="profile-crop-circle" id="profileCropCircle">
           <img id="profileCropImg" draggable="false" style="display:none;">
@@ -110,26 +117,28 @@
         </div>
       </div>
       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
-      <input type="text" class="profile-name-input" id="profileNameInput" placeholder="Your nickname..." maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()">
-      <div class="profile-auth-label" id="profileAuthLabel" style="display:none;">Windows login</div>
-      <input type="text" class="profile-name-input profile-nickname-input" id="profileNicknameInput" placeholder="Display name (for greetings)" maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()" style="display:none;">
-      <div class="profile-nickname-hint" id="profileNicknameHint" style="display:none;">How you want to be greeted</div>
+      <input type="text" class="profile-name-input profile-nickname-input" id="profileNicknameInput" placeholder="Display name (for greetings)" maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter')saveProfile()">
+      <div class="profile-nickname-hint" id="profileNicknameHint">How you want to be greeted</div>
       <button class="profile-save-btn" onclick="saveProfile()">Save</button>
     </div>
   </div>
 </nav>
+<!-- A save the server refused: under the nav, in the page's flow, so it covers nothing (SAVE_FAILURE_PLAN.md). -->
+<div id="saveBar" class="save-bar" role="status" aria-live="polite" hidden></div>
 
 <!-- ═══ JOB HEADER (billboard) ═══ -->
 <div class="job-header" id="printHeader" style="display:none;">
-  <!-- Lock banner (server-based locking — hidden until internal server is available) -->
-  <div class="lock-banner" id="lockBanner" style="display:none;">
-    <svg class="lock-banner-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    <span class="lock-banner-text"><strong id="lockBannerUser">Someone</strong> is currently editing this job</span>
-    <div class="lock-banner-actions">
-      <button class="lock-banner-btn lock-banner-readonly" onclick="setReadOnly(true)">View Read-Only</button>
-      <button class="lock-banner-btn lock-banner-edit" onclick="dismissLockBanner()">Edit Anyway</button>
-    </div>
-  </div>
+  <!-- Where the cursor rests when a job opens: on nothing, so the first Tab
+       goes to the first control below (KEYBOARD_PLAN.md 2.5). Empty, so no
+       click can land on it; the header itself takes no tabindex, or a click
+       on its blank parts would move the cursor there. -->
+  <span id="workOrderTop" tabindex="-1"></span>
+  <!-- The read-only view's line (ARCHIVE_VIEW_PLAN, EDIT_LOCK_PLAN): an
+       archived job, or a live job somebody else is editing, with its one
+       button (Take over, Edit, Home). app.js writes the words; CSS shows it
+       only while body.job-view is on. The old lock banner with Edit Anyway
+       and View Read-Only went with the edit lock becoming a gate. -->
+  <div class="view-line" id="viewLine"></div>
   <div class="job-fields-row">
     <div class="job-field job-field--jobnum">
       <span class="job-field-label">Job#</span>
@@ -173,7 +182,7 @@
       <span class="job-field-label">Version</span>
       <div class="version-display">
         <span class="version-code" id="printVersion" onclick="openVersionPicker()">---</span>
-        <button class="version-inc-btn" onclick="incrementVersion()" title="Increment version">+</button>
+        <button class="version-inc-btn hide-in-view" onclick="incrementVersion()" title="Increment version">+</button>
       </div>
       <div class="version-picker" id="versionPicker">
         <div class="version-picker-row">
@@ -193,13 +202,31 @@
     <span class="job-field-divider"></span>
     <div class="job-field job-field--status">
       <span class="job-field-label">Status</span>
-      <span class="status-header-trigger" id="headerStatusBadge" onclick="openStatusPopover(this, currentJobId)"></span>
+      <span class="status-header-trigger" id="headerStatusBadge" tabindex="0" onclick="openStatusPopover(this, currentJobId)" onkeydown="statusPillKey(event, currentJobId)"></span>
     </div>
     <div style="flex:1;"></div>
-    <div class="readonly-badge" id="readonlyBadge" style="display:none;">READ-ONLY</div>
-    <div class="required-badge" id="requiredBadge"></div>
+    <!-- One group, so the READ-ONLY badge, Send and QC Review wrap to the next
+         line together. Apart, the badge landed wherever the fields row broke:
+         at the far left under Job#, or top right with the buttons below it
+         (item 6a). -->
+    <div class="job-header-actions">
+      <div class="readonly-badge" id="readonlyBadge" style="display:none;">READ-ONLY</div>
+      <!-- review.js owns both of these. Send to Prepress / Send to Tech Services
+           follows the department tab and shows only to a CSR on a job that
+           department has not picked up (START_NEW_JOB_PLAN). The wrapper is what
+           its box hangs from, so the box is placed by CSS and no code here or in
+           review.js ever writes a style. -->
+      <span class="review-newjob-wrap" id="reviewNewJobWrap">
+        <button type="button" id="reviewNewJobBtn" class="review-open-btn review-newjob-btn" hidden>Send to Prepress</button>
+      </span>
+      <button type="button" id="reviewOpenBtn" class="review-open-btn" hidden onclick="openReview(currentJobId, activeDepartment)">QC Review</button>
+    </div>
     <div class="job-field" style="justify-content:center;flex-shrink:0;">
-      <button class="header-close-btn" onclick="closeJobWithWarning()" title="Close job">&times;</button>
+      <!-- The one press that files a revision. It was a bare times sign with
+           only a tooltip, which read as "discard" on hover and which nobody
+           pressed, so the revisions on a work order never filled in
+           (David, 2026-09-21). Home does not file and still does not. -->
+      <button class="header-close-btn hide-in-view" onclick="closeJobWithWarning()" title="Locks this round's instructions into the Revisions and closes the job"><span class="header-close-x" aria-hidden="true">&times;</span>Lock instructions</button>
     </div>
   </div>
   <div class="job-timestamps">
@@ -383,11 +410,11 @@
             <th onclick="setSortColumn('clientName')">Client <span class="sort-arrow" id="sort-clientName"></span></th>
             <th onclick="setSortColumn('jobDescription')">Project <span class="sort-arrow" id="sort-jobDescription"></span></th>
             <th onclick="setSortColumn('csrName')">CSR <span class="sort-arrow" id="sort-csrName"></span></th>
-            <th onclick="setSortColumn('assignee')">Assigned <span class="sort-arrow" id="sort-assignee"></span><span class="assign-toggle assign-toggle-cs" id="assignToggleCS" onclick="event.stopPropagation(); setAssignedDept('cs')" title="Creative Services (Prepress)">CS</span><span class="assign-toggle assign-toggle-ts inactive" id="assignToggleTS" onclick="event.stopPropagation(); setAssignedDept('ts')" title="Tech Services">TS</span></th>
             <th onclick="setSortColumn('due')">Signoff Due <span class="sort-arrow active" id="sort-due">&#9652;</span></th>
             <th onclick="setSortColumn('status')">Status</th>
             <th>Depts</th>
-            <th onclick="setSortColumn('dateCreated')">Created <span class="sort-arrow" id="sort-dateCreated"></span></th>
+            <th class="col-created" onclick="setSortColumn('dateCreated')">Created <span class="sort-arrow" id="sort-dateCreated"></span></th>
+            <th class="col-qc" onclick="setSortColumn('qc')">QC <span class="sort-arrow" id="sort-qc"></span></th>
           </tr>
         </thead>
         <tbody id="jobTableBody"></tbody>
@@ -395,8 +422,10 @@
       <div class="pagination" id="paginationControls"></div>
     </div>
 
-    <!-- Bottom: Archive + Templates -->
+    <!-- Bottom: Archive (with Deleted jobs under it) + Templates -->
     <div class="bottom-row">
+      <!-- One column: hidden while both panels in it are. -->
+      <div class="bottom-col" id="archiveCol" hidden>
       <!-- Header is static markup so the search box survives re-rendering.
            renderArchivePage() only rewrites #archiveList below it. -->
       <div class="bottom-section" id="archivedJobs" hidden>
@@ -413,6 +442,19 @@
         </div>
         <div id="archiveList"></div>
       </div>
+      <!-- Deleted jobs that left a QC record (item 7): a row opens the record
+           read only in the QC Review window. Static header for the same
+           reason as the Archived one; renderDeletedPage() rewrites
+           #deletedList only. Hidden until a job with QC has been deleted. -->
+      <div class="bottom-section" id="deletedJobs" hidden>
+        <div class="bottom-section-header">
+          <span class="bottom-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Deleted jobs</span>
+          <span class="bottom-count" id="deletedCount">0</span>
+          <input type="text" class="archive-search" id="deletedSearchInput" placeholder="Search deleted..." autocomplete="off">
+        </div>
+        <div id="deletedList"></div>
+      </div>
+      </div>
       <div class="bottom-section" id="templatesCol"></div>
     </div>
   </div>
@@ -425,9 +467,9 @@
     <form id="newJobForm">
       <div class="modal-two-col">
         <div class="modal-col">
-      <div class="form-group"><label>Job Number *</label><input type="text" id="jobNumber" required></div>
+      <div class="form-group"><label>Job Number *</label><input type="text" id="jobNumber" required maxlength="50"></div>
       <div class="form-group"><label>Project Name</label><input type="text" id="jobDescription" placeholder="e.g., Spring Mailer, Annual Report"></div>
-      <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="clientName" required>
+      <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="clientName" required maxlength="200">
     <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
     <div class="quick-pick-menu" data-options='[
       "3AM Innovations",
@@ -646,7 +688,7 @@
   </div>
 </div>
 
-      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="csrName" required maxlength="100"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
       <div class="form-group" id="componentsSelectGroup">
         <label>Components (select all that apply)</label>
         <div class="components-select" id="componentsSelect"></div>
@@ -745,9 +787,9 @@
       <div class="form-group">
         <label>Component Name *</label>
         <div class="quick-pick-wrapper">
-          <input type="text" id="newComponentName" required placeholder="e.g., Letter, Envelope">
+          <input type="text" id="newComponentName" required maxlength="200" placeholder="e.g., Letter, Envelope">
           <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
-          <div class="quick-pick-menu" data-options='["6x9.5\u2033 Envelope", "9x12 Flat", "A7 Envelope", "Booklet", "Buckslip", "Label", "Letter", "No. 9 BRE Envelope", "No. 10 Envelope", "No. 10 Envelope Window", "Postcard", "Remit", "Self-Mailer", "Sticker"]'></div>
+          <div class="quick-pick-menu" data-options='["6x9.5\u2033 Envelope", "9x12 Envelope", "A7 Envelope", "Booklet", "Buckslip", "Label", "Letter", "No. 9 BRE Envelope", "No. 10 Envelope", "No. 10 Envelope Window", "Postcard", "Remit", "Self-Mailer", "Sticker"]'></div>
         </div>
       </div>
       <div class="modal-buttons">
@@ -763,15 +805,15 @@
   <div class="modal-content">
     <h2>Edit Job</h2>
     <form id="editJobForm">
-      <div class="form-group"><label>Job Number *</label><input type="text" id="editJobNumber" required></div>
+      <div class="form-group"><label>Job Number *</label><input type="text" id="editJobNumber" required maxlength="50"></div>
       <div class="form-group"><label>Project Name</label><input type="text" id="editJobDescription"></div>
-      <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="editClientName" required autocomplete="off">
+      <div class="form-group"><label>Client Name *</label><div class="quick-pick-wrapper"><input type="text" id="editClientName" required maxlength="200" autocomplete="off">
         <button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button>
         <div class="quick-pick-menu" data-options='[
           "3AM Innovations","AAA","AAA Central Penn","AAA Hoosiers","AAA Hudson Valley","AAA Minneapolis","AAA North Penn","AAA Northampton","AAA Northway","AAA Reading Berks","AAA Schuylkill","AAA Shelby County","Akron Rule","Ad Specialty Solutions LLC","Adirondack Explorer","AIIM","Albany Law School","Al Sigl","Allied Motion","AMC","American Atheist","Amherst Memorial Chapel","Amplified","And More Marketing","Apex Dental","ARIC","ArtPark","B and L","Beaches","Berenson","Bills Foundation","BMG","Bob Weaver Motorsports","Bonadio Group","BPO","Brochures Unlimited","Buffalo Academyof Science","Buffalo Audubon Society","Buffalo Bills","Buffalo Canvas","BuffaloCleaning","Buffalo Fine Arts","Buffalo History Museum","Buffalo Museum of Science","Buffalo Oral Surgery","Buffalo Regals Hockey","Buffalo Sabres","Burchfield Penney","Burgio & Campofelice","Cambria Fire","Campbell Travel","CanisusCollege","CarX","Catholic Charities","Catholic Health System","CCFCS","Center for Inquiry Periodical","Charlie Butcher","Childrens Hospital Fdn","City Action","CMI","Coast Technology","Community Bank","Command Direct","Compu-Mail","CPS","CTG Group","Data-Mation","Dave Cacciatore","Delaware North","Delta Sonic","DesignNY","DiCamillo","DiMinos Tops","Direct Security","Dixon Schwabl","East House","Elderwood","EnSol","Erie 1 Boces","ERW","Estiator","Evergreen Health","EZFlats","Fastenal","First Amherst","Foodlink","FR Remley","Freed Maxick","Frontier","Garrett Leather","Gelia","GEVA","Getzville Fire Company","Global Indemnity","Grand Island CSD","Grand Island Chamber","GreenKnight Landscaping","Hope Rising","Horizon Health","Hospice","Hub Scrap","Hudson Park River Trust","ICC Commonwealth","Independent Health","Independent Health Foundation","Independent Health Fulfillment","Independent Health Self Funded Services","JFD Sports","JLawrence","Junior League","Kahana Feld","Kelleher Law","Ken Ton Family Support","Kingdom Bound","Krown Rust Control","Krystal Klear","KSV","Lancaster Fire","Lancaster Football","LewistonCouncil on the Arts","Lewiston Fire Co","Lewiston Kiwanis","LS&S","Luminus","Main Place Liberty","Manzella","Massena Hospital","Microhealth","Mr Smith Agency","NAMI","Napolis","Natures Lawn","Neighbor to Neighbor","NERG","NewsMax","NF City Market","NFRRS","NFTA","Night Out","Niagara Cty Deputy Sheriff","Niagara Falls Country Club","Niagara Falls Public Library","Niagara Falls Sports Hall Of Fame","Niagara Hospice","Niagara Pumpkin","Niagara University","Northtown Automotive","NTS","NYSWA","OLV","Orleans County","Park Ave","PDM","Pediatric Specialty Care","PGP","Print2Web","Proforma","Propitious Media","Razorfish","Revive Wesleyan","Ricotta & Ricotta","RMF","Robert Garey","Roswell","Roy-Hart","Sacred Heart","Safetec","SaveonSP","Seneca Gaming","Seneca Niagara","Service Collaboration WNY","Short N Numbers","Soflo Clean Water","Spaghetti & Meatballs","St. Adalberts","St. Francis Prep","St. Lawrence","Stannp","Sunday Driver","SUNY BuffState","Switzer Precision","TASC","Taste of Buffalo","The Chapel","The Martin Group","Tim Thomas","Tops Markets","Transitowne","Twin District","UB","UB Architecture","UB Campus Dining","UB Career Design","UB Orientation","UB School Of Nursing","University Libraries","Unreal Digital","USA Insulation","Veterans Outreach Center","Virginia Wireless","Vivrelle","Walden Galleria","Western Division FCU","West Seneca West","Wilcor","Williamsville North","Wind Spirit People And Places","Wireless Infrastructure","WNY Heritage","WNYIL","YMCA"
         ]'></div>
       </div></div>
-      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
+      <div class="form-group"><label>CSR Name *</label><div class="quick-pick-wrapper"><input type="text" id="editCSRName" required maxlength="100" autocomplete="off"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Brandilee Czajkowski", "Charlene Fitzpatrick", "Claudine Hauret", "Courtney Coyle", "Doug Jowsey", "Gina Burton", "Jamie Coyle", "Lucy Ballester", "Marc Maio", "Rosette Jowsey", "Stef Tarpy"]'></div></div></div>
       <div class="form-group">
         <label>Assigned to (Prepress)</label>
         <select id="editAssignedToPrepress" class="assignee-select">
@@ -820,6 +862,47 @@
   </div>
 </div>
 
+<!-- ═══ QC REVIEW WINDOW (js/review.js) ═══
+     Placed before the app's own pop-ups so they paint over it. review.js fills
+     #reviewJob, #reviewTabs, #reviewBody, #reviewSide and #reviewSaveLine. -->
+<div id="reviewModal" class="modal review-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+  <div class="review-panel">
+    <div class="review-head">
+      <div class="review-head-row">
+        <div class="review-head-text">
+          <h2 class="review-title" id="reviewTitle">QC Review</h2>
+          <div class="review-job" id="reviewJob"></div>
+        </div>
+        <!-- The User Guide on its QC Review tab, over this window (USER_GUIDE_PLAN
+             3.2). #helpModal comes later in the page, so it paints over the
+             window and review.js lets focus into it; the window stops
+             mousedown and keydown at its root, never click. -->
+        <button type="button" class="review-guide" id="reviewGuide" onclick="openHelpModal('qc')" title="User Guide: QC Review">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Guide
+        </button>
+        <button type="button" class="review-close" id="reviewClose" data-review-action="close" aria-label="Close" title="Close">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="review-tabs" id="reviewTabs" role="tablist"></div>
+    </div>
+    <div class="review-main">
+      <div class="review-body" id="reviewBody"></div>
+      <aside class="review-side" id="reviewSide" aria-label="Who is who, and the job's QC activity"></aside>
+    </div>
+    <!-- A signed sheet as it was frozen. Drawn over the panel, closed by its
+         own button: it is a record, never a thing to edit. -->
+    <div class="review-sheet" id="reviewSheet" hidden></div>
+    <div class="review-foot" id="reviewFoot">
+      <svg class="review-foot-icon review-foot-ok" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <svg class="review-foot-icon review-foot-warn" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="review-save-line" id="reviewSaveLine" aria-live="polite">Saves as you go.</div>
+      <button type="button" class="review-foot-close" id="reviewFootClose" data-review-action="close">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ QC WARNING MODAL ═══ -->
 <div id="qcWarningModal" class="modal">
   <div class="modal-content" style="max-width:480px;">
@@ -847,7 +930,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <span class="sidebar-title" id="sidebarTitle">Prepress Instructions</span>
-        <button class="generate-specs-btn" onclick="generateSummaryBlock()" title="Generate summary from the active department's checked fields"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate</button>
+        <button class="generate-specs-btn hide-in-view" onclick="generateSummaryBlock()" title="Generate summary from the active department's checked fields"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate</button>
       </div>
       <div class="qc-inline-strip" id="qcInlineStrip" style="display:none;">
         <div class="qc-inline-header">
@@ -913,7 +996,7 @@
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ps4"><span class="toggle-track"></span></label>
             <span class="field-label">Finished Size</span>
-            <div class="field-input"><input type="text" class="notes" data-id="ps4n" placeholder='8.5" x 3.5"'></div>
+            <div class="field-input"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ps4n" placeholder='8.5" x 3.5"'><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options-from="finishedSize" data-options='[]'></div></div></div>
           </div>
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="sp2"><span class="toggle-track"></span></label>
@@ -1195,16 +1278,11 @@
               <span class="field-label" style="min-width:auto;">Match job</span>
               <div class="field-input" style="flex:none;width:140px;"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_cb50a_n"><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["2-way", "3-way"]'></div></div></div>
             </div>
-            <div class="field-row field-row--cb-only">
+            <div class="field-row" style="flex:1;">
               <label class="toggle-switch"><input type="checkbox" data-id="ts_cb50b"><span class="toggle-track"></span></label>
-              <span class="field-label">Match/Append</span>
-              <div class="field-input"></div>
+              <span class="field-label" style="min-width:auto;">Match/Append</span>
+              <div class="field-input" style="min-width:140px;"><input type="text" class="notes" data-id="ts_cb50b_n"></div>
             </div>
-          </div>
-          <div class="field-row field-indent-1">
-            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp51"><span class="toggle-track"></span></label>
-            <span class="field-label">Casing</span>
-            <div class="field-input field-input--pick"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_sp51n" placeholder="select one" readonly><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Upper/Lower, Punctuation","Upper/Lower, No Punctuation","All Upper, Punctuation","All Upper, No Punctuation"]'></div></div></div>
           </div>
 
         </div>
@@ -1254,23 +1332,28 @@
           </div>
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp92"><span class="toggle-track"></span></label>
-            <span class="field-label">Number of letter versions</span>
+            <span class="field-label">Number of versions</span>
             <div class="field-input field-input--narrow"><input type="text" class="notes" data-id="ts_sp92n" placeholder="numeric"></div>
           </div>
           <div class="field-row field-indent-1">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp93a"><span class="toggle-track"></span></label>
-            <span class="field-label">Signoffs per letter version</span>
+            <span class="field-label">Signoffs per version</span>
             <div class="field-input"><input type="text" class="notes" data-id="ts_sp93an"></div>
           </div>
           <div class="field-row">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp95"><span class="toggle-track"></span></label>
-            <span class="field-label">Samples per letter version</span>
+            <span class="field-label">Samples per version</span>
             <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp95n" rows="1" placeholder="numeric" oninput="autoResizeTextarea(this)"></textarea></div>
           </div>
           <div class="field-row field-indent-1">
             <label class="toggle-switch"><input type="checkbox" data-id="ts_sp94"><span class="toggle-track"></span></label>
             <span class="field-label">Samples &mdash; address info</span>
             <div class="field-input"><textarea class="notes notes-multi auto-grow" data-id="ts_sp94n" rows="1" placeholder="e.g., John Doe, 123 Main St, Anytown, NY 14303" oninput="autoResizeTextarea(this)"></textarea></div>
+          </div>
+          <div class="field-row">
+            <label class="toggle-switch"><input type="checkbox" data-id="ts_sp51"><span class="toggle-track"></span></label>
+            <span class="field-label">Casing</span>
+            <div class="field-input field-input--pick"><div class="quick-pick-wrapper"><input type="text" class="notes" data-id="ts_sp51n" placeholder="select one" readonly><button type="button" class="quick-pick-btn" onclick="toggleQuickPick(this)">&#9660;</button><div class="quick-pick-menu" data-options='["Upper/Lower, Punctuation","Upper/Lower, No Punctuation","All Upper, Punctuation","All Upper, No Punctuation"]'></div></div></div>
           </div>
         </div>
       </div>
@@ -1280,195 +1363,740 @@
   </div><!-- /main-content -->
 </div><!-- /sopContent -->
 
-<!-- ═══ HELP / USER GUIDE MODAL ═══ -->
+<!-- ═══ HELP / USER GUIDE MODAL ═══
+     Two tabs, STS Work Order and QC Review (USER_GUIDE_PLAN.md). app.js opens
+     it (openHelpModal), switches tabs (showHelpTab) and prints the tab showing
+     (printHelpGuide). A message the app shows is quoted in a .help-say, word
+     for word: dev/guide-check.js looks each one up in the app's own files.
+     After #reviewModal on purpose: it paints over the QC Review window, which
+     opens it on the QC Review tab from its Guide button. -->
 <div id="helpModal" class="modal">
-  <div class="modal-content help-modal-content">
+  <div class="modal-content help-modal-content" tabindex="-1">
     <div class="help-modal-header">
-      <h2>User Guide</h2>
-      <div class="help-modal-actions">
-        <button class="help-modal-print" onclick="printHelpGuide()" title="Print / Save as PDF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
-        <button class="help-modal-close" onclick="closeHelpModal()" title="Close">&times;</button>
+      <div class="help-modal-top">
+        <h2>User Guide</h2>
+        <div class="help-modal-actions">
+          <button class="help-modal-print" onclick="printHelpGuide()" title="Print this tab / Save as PDF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+          <button class="help-modal-close" onclick="closeHelpModal()" title="Close">&times;</button>
+        </div>
+      </div>
+      <div class="help-tabs" role="tablist" aria-label="User Guide">
+        <button type="button" class="help-tab" id="helpTabWork" role="tab" aria-selected="true" aria-controls="helpPanelWork" onclick="showHelpTab('work', true)">STS Work Order</button>
+        <button type="button" class="help-tab" id="helpTabQc" role="tab" aria-selected="false" aria-controls="helpPanelQc" tabindex="-1" onclick="showHelpTab('qc', true)">QC Review</button>
       </div>
     </div>
-    <div class="help-body">
+    <!-- ═══ TAB 1: STS WORK ORDER ═══ -->
+    <div class="help-body" id="helpPanelWork" role="tabpanel" aria-labelledby="helpTabWork" tabindex="0">
 
-      <section class="help-section">
-        <h3>What This App Does</h3>
-        <p>Digital work orders for Prepress and Tech Services. Create a job, fill in specs, write instructions, print. Saves to SQL Server automatically.</p>
+      <section class="help-section help-start">
+        <h3>Start here</h3>
+        <ol class="help-steps">
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">1</span><strong class="help-step-title">Choose your name</strong></div>
+            <div class="help-pic" aria-hidden="true">
+              <span class="help-pic-input is-focus">Dav<span class="help-pic-caret"></span></span>
+              <span class="help-pic-row help-pic-row--close"><span class="help-btn help-btn--red help-btn--sm">Next</span><svg class="help-pic-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><span class="help-btn help-btn--red help-btn--sm">Continue</span></span>
+            </div>
+            <p class="help-step-text">When the app asks, type part of your name, click it, press <strong>Next</strong>, then <strong>Continue</strong>.</p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">2</span><strong class="help-step-title">Find the job</strong></div>
+            <div class="help-pic" aria-hidden="true">
+              <span class="help-pic-input"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="help-pic-hint">Search jobs, clients, CSRs...</span></span>
+              <span class="help-pic-tabs"><span class="is-on">My Jobs</span><span>All Jobs</span></span>
+            </div>
+            <p class="help-step-text">Search the job list or press <strong>My Jobs</strong>, then click the job's row.</p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">3</span><strong class="help-step-title">Somebody else has it open?</strong></div>
+            <div class="help-pic" aria-hidden="true">
+              <span class="help-pic-line">Don Marcotte is editing this job.<span class="help-pic-pill">Take over</span></span>
+            </div>
+            <p class="help-step-text">It opens read only. Read or print it, or press <strong>Take over</strong>.</p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">4</span><strong class="help-step-title">Make a work order</strong><span class="help-who">CSRs</span></div>
+            <div class="help-pic" aria-hidden="true">
+              <span class="help-pic-row help-pic-row--wrap"><span class="help-btn help-btn--red help-btn--icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Work Order</span><span class="help-pic-row"><svg class="help-pic-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><span class="help-btn help-btn--red">Create</span></span></span>
+            </div>
+            <p class="help-step-text">Press <strong>New Work Order</strong>, fill in the form, then press <strong>Create</strong>.</p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">5</span><strong class="help-step-title">Fill in a department's side</strong></div>
+            <div class="help-pic help-pic--tight" aria-hidden="true">
+              <span class="help-pic-depts"><span class="is-on"><span class="help-pic-dot"></span>Prepress</span><span><span class="help-pic-dot"></span>Tech Services</span></span>
+              <span class="help-pic-field"><span class="help-pic-switch"></span>Flat Size</span>
+              <span class="help-btn help-btn--sunken help-btn--sm help-btn--icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Generate</span>
+            </div>
+            <p class="help-step-text">Click <strong>Prepress</strong> or <strong>Tech Services</strong>, switch on the rows that apply, then press <strong>Generate</strong>.</p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">6</span><strong class="help-step-title">Print it for Midnight</strong><span class="help-who">CSRs</span></div>
+            <div class="help-pic help-pic--bar" aria-hidden="true">
+              <span class="help-pic-bar"><span class="help-pic-navbtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>&#9662;</span></span>
+              <span class="help-pic-menu"><span class="is-on">Print Current</span><span>Print All Components</span></span>
+            </div>
+            <p class="help-step-text">Choose a print from the <strong>Print</strong> menu, save it as a PDF and attach it in Midnight <span class="help-outside">outside the app</span></p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">7</span><strong class="help-step-title">Hand it to a department</strong><span class="help-who">CSRs</span></div>
+            <div class="help-pic" aria-hidden="true">
+              <span class="help-btn help-btn--red">Send to Prepress</span>
+            </div>
+            <p class="help-step-text">Press <strong>Send to Prepress</strong> (or <strong>Send to Tech Services</strong>). See the QC Review tab of this guide.</p>
+          </li>
+          <li class="help-step">
+            <div class="help-step-head"><span class="help-step-no">8</span><strong class="help-step-title">Leave it</strong></div>
+            <div class="help-pic help-pic--bar" aria-hidden="true">
+              <span class="help-pic-bar"><span class="help-pic-home"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><span class="help-pic-rule"></span><span class="help-pic-brand">STS Work Order</span></span>
+              <span class="help-pic-below"><span class="help-btn help-btn--sunken help-btn--icon"><span>&times;</span>Lock instructions</span></span>
+            </div>
+            <p class="help-step-text">It saves as you go. <strong>Home</strong> leaves the instructions as they are; <strong>Lock instructions</strong> files them and closes the job.</p>
+          </li>
+        </ol>
+        <p class="help-aside">A <strong>component</strong> on the work order (the Letter, the Envelope, the Buckslip) is called a <strong>piece</strong> in QC Review. They are the same thing.</p>
       </section>
 
       <section class="help-section">
-        <h3>Landing Page</h3>
-        <p>A sortable, filterable table of all your jobs. Columns: Job#, Client, Project, CSR, Assigned, Signoff Due, Status, Depts.</p>
+        <h3>Choosing your name</h3>
+        <p>When the app opens:</p>
+        <ol>
+          <li>Type part of your name and click it.</li>
+          <li>Press <strong>Next</strong>.</li>
+          <li>Check your name under <span class="help-say">You are choosing</span>. Press <strong>Continue</strong>, or <strong>Back</strong> to pick again.</li>
+        </ol>
         <ul>
-          <li><strong>New Work Order</strong> creates a job.</li>
-          <li>Click any row to open it.</li>
-          <li><strong>My Jobs / All Jobs</strong> tabs -- "My Jobs" shows the jobs you created.</li>
-          <li><strong>Search</strong> filters across job number, client, CSR, and project.</li>
+          <li>Choosing your name never asks for a password.</li>
+          <li>Always pick your own name. Your work is saved under it, every QC Review check included.</li>
+          <li>Your name shows at the top right. This browser keeps it until you press <strong>Change user</strong> in your profile, or until 12 hours pass without using the app.</li>
+          <li>Not on the list? Contact an administrator or the IT department.</li>
         </ul>
-        <h4>Controls</h4>
+      </section>
+
+      <section class="help-section">
+        <h3>The job list</h3>
+        <p>Every active job, 10 to a page. Click a row to open its work order (the QC cell opens QC Review instead). Click a column's header to sort by it (not Depts).</p>
+        <h4>Filters</h4>
         <ul>
-          <li><strong>Show row</strong> -- quick views: All, Overdue (red count), Due Today (amber count). Counts reflect all active jobs regardless of filters.</li>
-          <li><strong>Group</strong> -- group rows by None, Status, or CSR.</li>
-          <li><strong>Status</strong> -- filter by status: All, New, In Progress, On Hold, Complete, Cancelled.</li>
-          <li><strong>Dept</strong> -- filter by department: All, Prepress, Tech Services.</li>
-          <li><strong>CSR / Assignee / Client</strong> -- multi-select dropdowns. Active selections appear as chips below the controls.</li>
-          <li><strong>Updated</strong> -- filter by last modified time: Today, This Week, This Month.</li>
+          <li><strong>My Jobs</strong>: the jobs you created. <strong>All Jobs</strong>: every active job.</li>
+          <li><strong>Search</strong>: job number, client, project, CSR, and both departments' assignees.</li>
+          <li><strong>Show</strong> <strong>Corrections</strong>: jobs whose QC chip reads CORRECTIONS. The counts on Show cover all active jobs, whatever else is filtered.</li>
+          <li><strong>Dept</strong>: All, Prepress or Tech Services. See More detail for what counts.</li>
+          <li><strong>CSR</strong>, <strong>Assignee</strong>, <strong>Client</strong>: check names, then press <strong>Apply</strong>. Your picks show as chips under the filters.</li>
         </ul>
         <h4>Columns</h4>
         <ul>
-          <li><strong>Created</strong> -- the date and time the job was entered into the system. Click the header to sort by it, newest first. This is when the record was made, not the customer's in-hands date.</li>
-          <li><strong>Assigned</strong> -- shows one department's assignee at a time. Click <strong>CS</strong> or <strong>TS</strong> in the header to switch.</li>
-          <li><strong>Signoff Due</strong> -- shows the earlier of the two department due dates. Red "OVERDUE" tag for past-due jobs, amber "DUE SOON" within 12 hours. Complete and Cancelled jobs show muted text.</li>
-          <li><strong>Status</strong> -- click the status badge on any row to change it (New, In Progress, On Hold, Complete, Cancelled).</li>
-          <li><strong>Depts</strong> -- colored dots showing which departments have content.</li>
+          <li><strong>Signoff Due</strong>: the earlier of the two departments' dates. A date with no time counts as 5:00 PM.</li>
+          <li>OVERDUE (red): the date has passed. DUE SOON (blue): it is due later today or tomorrow.</li>
+          <li>Complete and Cancelled jobs show the date in grey.</li>
+          <li><strong>Status</strong>: click it on any row to change it. Complete asks <span class="help-say">Archive this job?</span> Yes archives it, No keeps it on the list.</li>
+          <li>If somebody has that job open, the status change is put back and the app names them.</li>
+          <li><strong>Depts</strong>: a red dot for Prepress, a navy dot for Tech Services.</li>
+          <li><strong>Created</strong>: when the job was entered in the app, not the customer's in-hands date.</li>
+          <li><strong>QC</strong>: where the job's QC Review stands. A click in that cell opens the QC Review window, never the work order. See the QC Review tab.</li>
         </ul>
-        <h4>Bulk Actions</h4>
-        <p>Use the checkboxes on each row (or the select-all header checkbox) to select multiple jobs, then Archive or Delete them in bulk.</p>
-        <h4>Pagination</h4>
-        <p>The table shows 10 jobs per page. Use the page buttons below it, or the <strong>per page</strong> dropdown to switch to 25 or 50.</p>
+        <h4>Several jobs at once</h4>
+        <ul>
+          <li>Check the boxes at the left of the rows, or the header box for the whole page.</li>
+          <li>Press <strong>Archive</strong> or <strong>Delete</strong> on the bar that appears. Delete asks for the admin password.</li>
+          <li>A job somebody has open is skipped and named.</li>
+        </ul>
+        <p><strong>Refresh</strong> loads everyone's latest changes. The page buttons and the per page choice are under the table.</p>
+        <h4>More detail</h4>
+        <p>A job counts for a department, and lights its dot in Depts, when any of these is true:</p>
+        <ul>
+          <li>a component has instructions for it, in the box or in the Revisions</li>
+          <li>one of its rows is switched on</li>
+          <li>someone is assigned to it</li>
+          <li>it has QC Review going there</li>
+        </ul>
+        <p>A signoff due date alone does not count.</p>
       </section>
 
       <section class="help-section">
-        <h3>Archived Jobs</h3>
-        <p>Archived jobs move out of the main table into the <strong>Archived</strong> panel below it. Nothing is deleted -- archiving just clears the job off the active list.</p>
+        <h3>Making a work order</h3>
+        <ol>
+          <li>Press <strong>New Work Order</strong> on the job list, or <strong>+</strong> in the top bar.</li>
+          <li>Fill in <strong>Job Number</strong>, <strong>Client Name</strong> and <strong>CSR Name</strong> (required) and <strong>Project Name</strong>.</li>
+          <li>Under <strong>Components</strong>, click each component the job has. With none picked, the job gets one called "Main".</li>
+          <li>For each department, set <strong>Assigned to</strong> and the signoff due date and time.</li>
+          <li>Press <strong>Create</strong>.</li>
+        </ol>
         <ul>
-          <li><strong>Search</strong> -- the box in the panel header filters the archive by job number, client, and project name. It searches archived jobs only; the job table above has its own separate search. The count badge shows "3 of 27" while a search is active.</li>
-          <li><strong>Paging</strong> -- the panel shows 10 archived jobs at a time, newest first. Use <strong>Prev</strong> / <strong>Next</strong> at the bottom of the panel to move through pages.</li>
-          <li><strong>Per page</strong> -- the dropdown in the panel header switches between 10, 25, 50, and 100 at a time. This dropdown controls the archive panel only; the job table has its own separate one.</li>
-          <li><strong>Restore</strong> -- click the job name or the <strong>Restore</strong> button to move it back to the active list.</li>
-          <li><strong>Delete</strong> -- the red x permanently deletes an archived job. This cannot be undone.</li>
-          <li><strong>Archive on complete</strong> -- setting a job's status to Complete asks "Archive this job?" Choose Yes to archive it, No to leave it on the active list.</li>
+          <li>A signoff due is first set in this form. Duplicate Job uses the same form.</li>
+          <li>Once a department has a signoff due, you can change it in the header. A department left without one cannot get one later on the work order.</li>
+        </ul>
+        <h4>Duplicating</h4>
+        <ul>
+          <li><strong>Duplicate Job</strong> (the <strong>...</strong> menu, on a work order) opens this form with everything copied and " (Copy)" after the job number. Change the number before you press Create.</li>
+          <li>Duplicate Job does not copy:
+            <ul>
+              <li>the instructions and the Revisions</li>
+              <li>the file paths and the variable print rows</li>
+              <li>Previous Job#</li>
+              <li>both assignees and both signoff dates</li>
+              <li>the job's QC Review record</li>
+            </ul>
+          </li>
+          <li><strong>Duplicate Component</strong> copies the component showing into the same job, leaving out the same rows.</li>
         </ul>
       </section>
 
       <section class="help-section">
-        <h3>Creating a Job</h3>
-        <p>Click <strong>New Work Order</strong> and fill in Job Number, Client, CSR, and which components the job has (Letter, Envelope, etc.). If you skip components, a default "Main" is created.</p>
+        <h3>The work order screen</h3>
+        <h4>The header</h4>
+        <ul>
+          <li>Click <strong>Customer</strong>, <strong>CSR</strong>, <strong>Component</strong> (the name of the component showing), <strong>Signoff due</strong>, <strong>Assigned to</strong>, <strong>Version</strong> or <strong>Status</strong> to change it.</li>
+          <li><strong>Signoff due</strong> and <strong>Assigned to</strong> belong to the department tab showing. Signoff due shows only when that tab has one.</li>
+          <li><strong>+</strong> beside <strong>Version</strong> gives the next version: A01, A02, A03.</li>
+          <li><span class="help-btn help-btn--red">Send to Prepress</span> and <span class="help-btn help-btn--ink">QC Review</span>: see the QC Review tab. Send to Prepress is for CSRs only. On the Tech Services tab it reads <strong>Send to Tech Services</strong>.</li>
+          <li><strong>Lock instructions</strong>: see "Saving and leaving" below.</li>
+        </ul>
+        <h4>The checklist</h4>
+        <ul>
+          <li><strong>Prepress</strong> and <strong>Tech Services</strong> each have their own tab, rows and instructions box.</li>
+          <li>Each row has a switch. Most rows also have a box for details. Typing in the box switches the row on.</li>
+          <li>The small arrow on a box lists common answers.</li>
+          <li>A path pasted into a <strong>File Path</strong> box or <strong>Data file locations</strong> loses its quotes, and M:, N: or X: becomes the server's name.</li>
+          <li>A <strong>*</strong> after a row's name marks it required. Its box has a dashed outline while empty.</li>
+          <li>Greyed-out rows do not apply to the component.</li>
+          <li>Click a section's title to fold it or open it.</li>
+        </ul>
+        <h4>Instructions and Generate</h4>
+        <ul>
+          <li>The box on the left holds the department's instructions for the component showing. It takes bold, lists, highlight and pictures.</li>
+          <li><strong>Generate</strong> writes a summary of the switched-on rows into the box, between two grey marker lines.</li>
+          <li>Press it again after a change. It rewrites the summary in place. Words outside the grey lines stay; words between them are replaced.</li>
+          <li>If the specs do not add up, a <strong>QC Issues</strong> list appears above the box. Example: a press that cannot print duplex. Generate still writes the summary.</li>
+        </ul>
+        <h4>Revisions</h4>
+        <ul>
+          <li>The <strong>Revisions</strong> sit under the instructions box, newest first. Each is a round of instructions filed by <strong>Lock instructions</strong>, with who filed it and when.</li>
+          <li>The numbered buttons under them jump to one revision.</li>
+          <li>A revision cannot be taken back.</li>
+        </ul>
+        <h4>Components</h4>
+        <ul>
+          <li>You can add components until a job has 10. Each has its own rows, instructions and version.</li>
+          <li>Their tabs are above the checklist. Click a tab to show it. Double-click it to rename it.</li>
+          <li><strong>+</strong> adds one: type a name or pick one from the list.</li>
+          <li>A component tab's <strong>&times;</strong> deletes that component, after a question. The question says so if its QC checklist was started.</li>
+          <li>The last component cannot be deleted.</li>
+        </ul>
+        <h4>More detail</h4>
+        <ul>
+          <li><strong>Reset</strong> (in the <strong>...</strong> menu) switches off the rows on the department tab showing, for the component showing. Typed details and the other department's rows stay. <strong>Undo</strong> brings the rows back.</li>
+          <li>To widen the instructions box, drag the edge between it and the checklist.</li>
+          <li>Greyed out on a Letter: Indicia. On an envelope: Print marks, Number Up, Head info and Binding info.</li>
+          <li>On an envelope, Flat Size and Press offer envelope sizes and presses.</li>
+          <li>Under the header fields: who created and last changed the job, and when. "Header edited" follows a change to any header field except Status and Version. "Duplicated from" marks a copy. "Deleted" lists deleted components.</li>
+        </ul>
       </section>
 
       <section class="help-section">
-        <h3>The Job Screen</h3>
-
-        <h4>Header</h4>
-        <p>Shows Job#, Customer, CSR, Component, Version, and Status. Click any field to edit it inline. Version has a picker and a <strong>+</strong> button to auto-increment (A01, A02, A03...). Click the status badge to change it (New, In Progress, On Hold, Complete, Cancelled).</p>
-
-        <h4>Department Tabs</h4>
-        <p>Two tabs above the checklist: <strong>Prepress</strong> and <strong>Tech Services</strong>. Click a tab to switch. Each department has its own checklist fields and its own instructions editor. They save independently.</p>
-
-        <h4>Left Sidebar -- Instructions</h4>
-        <p>Rich text editor for free-form instructions. Content is per-department: switching tabs switches the editor too.</p>
+        <h3>One person at a time</h3>
+        <p>Only one person can change a job at a time. Anyone else gets it read only, with a READ-ONLY tag in the header and a line at the top:</p>
         <ul>
-          <li><strong>Generate</strong> reads your checklist fields and writes a formatted summary. If fields change after generating, printing warns you it may be stale.</li>
-          <li><strong>Revisions</strong> are saved when you close a job. Click any past entry in the timeline to view it.</li>
+          <li><strong>Don Marcotte is editing this job, last saved 2 min ago.</strong> The page keeps up with their saves while you watch. If they have left it, press <strong>Take over</strong>. It asks first. Their page then turns read only and lists anything they had not saved.</li>
+          <li><span class="help-say">Unlocked. Nobody is editing this job now.</span> Press <strong>Start editing</strong>.</li>
+          <li><span class="help-say">You have this job open in another window.</span> Use that window, or press <strong>Edit here</strong>.</li>
+          <li><span class="help-say">Checking who has this job...</span> A moment while the app asks.</li>
         </ul>
-        <p>The sidebar is resizable. Drag the handle between the sidebar and checklist.</p>
-
-        <h4>Right Panel -- Prepress Checklist</h4>
-        <p>Three sections:</p>
         <ul>
-          <li><strong>Piece Specs</strong> -- Flat Size, Finished Size, Presswork, Press, Press Sheet, Print Marks, Number Up, Indicia, Head Info, Binding, Special Color, Previous Job#</li>
-          <li><strong>File Path</strong> -- Artwork, Mockup, SOF, Seeds &amp; Samp, Lives, Record Counts, Other</li>
-          <li><strong>Variable Print</strong> -- Address Block, 2D (camera), 2D (inserter), Match Job</li>
+          <li>A job left 20 minutes without typing or clicking is let go, so others can have it. Press <strong>Start editing</strong> to carry on.</li>
+          <li>Your own two windows can both edit your job. Each picks up what you save in the other: <span class="help-say">Updated with the changes saved in your other window.</span></li>
+          <li>Printing and QC Review work on a read-only work order. QC Review never takes the job from anyone.</li>
         </ul>
-        <p>Each row has a toggle and a text field. Many fields have dropdown presets (click the arrow). Required fields show a red dot when empty. Flat Size and Press options switch automatically for envelope components.</p>
-
-        <h4>Right Panel -- Tech Services Checklist</h4>
-        <p>Five sections:</p>
-        <ul>
-          <li><strong>Data Conversion</strong> -- file locations, mailstreams, splitting, addressing fields</li>
-          <li><strong>NCOA / CASS</strong> -- address standardization, move updates, movers handling, deceased suppression</li>
-          <li><strong>Deduplication</strong> -- method (Individual / Household / Merge Households / Residential), file priorities, suppression match, rollup, casing</li>
-          <li><strong>Presort</strong> -- data processing fields (pending finalization)</li>
-          <li><strong>Print</strong> -- meeting required, variables, letter versions, signoffs, samples</li>
-        </ul>
-        <p>Same toggle + text pattern as Prepress. "Data file locations" is the only required field for now.</p>
       </section>
 
       <section class="help-section">
-        <h3>Components</h3>
-        <p>Jobs can have up to 10 components (e.g., Letter + Envelope + Buckslip). Tabs appear above the checklist.</p>
+        <h3>Saving and leaving</h3>
         <ul>
-          <li>Click a tab to switch.</li>
-          <li>Double-click to rename.</li>
-          <li><strong>+</strong> adds a new component (optionally from a template).</li>
-          <li><strong>&times;</strong> deletes it (only when more than one).</li>
+          <li>The app saves by itself: a moment after you stop typing, and every couple of seconds while you type.</li>
+          <li>If the server cannot be reached, a banner says so. Your changes wait in this page until it is back. Do not close or reload the page while the banner shows, or they are lost.</li>
+          <li><strong>Home</strong> (the house, top left) goes back to the job list. The instructions stay in the box for the next person.</li>
+          <li><strong>Lock instructions</strong> (in the header) files the instructions into the Revisions, under your name, and empties the box for the next round. It does this for every component, on both department tabs, then closes the job.</li>
+          <li>After Lock instructions, a note on the job list names any required rows still empty, for 5 seconds.</li>
+          <li><strong>Change user</strong> (in your profile) asks to close the job, then files its instructions the same way. It files them even if you then cancel the name picker.</li>
+          <li><strong>Archive</strong> files them too, once you say yes.</li>
+          <li>Closing the tab or the browser, or F5, saves what is on the screen. If a change is too big to send as the tab closes, Chrome asks "Leave site?". Press <strong>Cancel</strong>, wait a moment, then close again.</li>
+          <li>F5, or Back within 30 minutes of leaving, opens again the job you were editing in that tab. If somebody else has it by then, it opens read only.</li>
         </ul>
-        <p>Each component has its own checklist, instructions, and version.</p>
-      </section>
-
-      <section class="help-section">
-        <h3>Nav Bar</h3>
-        <table class="help-table">
-          <tr><td><strong>Home</strong></td><td>Back to landing page</td></tr>
-          <tr><td><strong>+</strong></td><td>New work order</td></tr>
-          <tr><td><strong>Print</strong></td><td>Print current, all components, or all as one PDF</td></tr>
-          <tr><td><strong>Undo / Redo</strong></td><td>Ctrl+Z / Ctrl+Y</td></tr>
-          <tr><td><strong>... (More)</strong></td><td>Edit Job, Duplicate Job/Component, Archive, Reset, Delete, Import/Export, Text Size</td></tr>
-          <tr><td><strong>Archive</strong></td><td>Move job to archive</td></tr>
-          <tr><td><strong>Book</strong></td><td>This guide</td></tr>
-          <tr><td><strong>Moon / Sun</strong></td><td>Dark mode toggle</td></tr>
-          <tr><td><strong>Search</strong></td><td>Highlights matching checklist fields, auto-expands collapsed sections</td></tr>
-          <tr><td><strong>Profile</strong></td><td>Shows the Windows account you signed in with, and your photo (top right circle). It is not editable -- see Signing In</td></tr>
-        </table>
       </section>
 
       <section class="help-section">
         <h3>Printing</h3>
-        <p>Three options in the print dropdown:</p>
+        <p>The <strong>Print</strong> menu in the top bar prints the department tab showing, with only that department's rows and instructions:</p>
         <ul>
-          <li><strong>Print Current</strong> -- active component only.</li>
-          <li><strong>Print All Components</strong> -- each component on a separate page.</li>
-          <li><strong>Print All as One PDF</strong> -- all components combined into one document.</li>
+          <li><strong>Print Current</strong>: the component showing.</li>
+          <li><strong>Print All Components</strong>: each component as its own print, one after another. Saving PDFs, you get one Save box each.</li>
+          <li><strong>Print All as One PDF</strong>: every component in one file, each starting on a new page.</li>
         </ul>
-        <p>Output uses the active department's color (red for Prepress, blue for Tech Services) and only shows that department's instructions and fields. The app warns if required fields are empty or the generated summary is out of date.</p>
-      </section>
-
-      <section class="help-section">
-        <h3>Duplicating</h3>
+        <p>For the PDF that goes into Midnight, use the <strong>Print</strong> menu. <strong>Ctrl+P</strong> prints the screen, not the work order sheet.</p>
+        <h4>Before it prints</h4>
         <ul>
-          <li><strong>Duplicate Job</strong> -- copies everything. Clears instructions, file paths, and variable print so you start fresh on those.</li>
-          <li><strong>Duplicate Component</strong> -- copies within the same job. Same clearing rules.</li>
+          <li>It gets the latest saved copy first. If that takes a moment, it says <span class="help-say">Getting the latest copy to print...</span></li>
+          <li>If the server does not answer: <span class="help-say">The latest copy could not be checked.</span> Press <strong>Print anyway</strong> or <strong>Cancel</strong>.</li>
+          <li>If rows changed since the last Generate: <strong>Summary outdated for</strong> the component. <strong>Update &amp; Print</strong> writes the summary again and prints. <strong>Print as is</strong> prints what is there.</li>
         </ul>
-      </section>
-
-      <section class="help-section">
-        <h3>Import / Export</h3>
+        <h4>The printed sheet</h4>
         <ul>
-          <li><strong>Export</strong> -- pick which jobs to export, downloads a .json file.</li>
-          <li><strong>Import</strong> -- load a .json file. Shows a preview with new/updated/duplicate status for each job.</li>
+          <li>A row switched off but with words prints with an empty box. File Path rows, Record Counts included, print only when switched on.</li>
+          <li>A file path prints under its label, one line each, in a typewriter font. In Chrome's PDF viewer a triple-click copies just that path.</li>
+          <li>Only the app's own yellow highlight prints.</li>
+          <li>The PDF is named after the job and component, like "48127 - Letter". Print All as One PDF uses every component's name.</li>
+          <li>Printing the same component again adds "(v2)", "(v3)" to the name, even after a cancelled print.</li>
+          <li>That count is kept on each PC, so two PCs can each make a "(v2)".</li>
         </ul>
       </section>
 
       <section class="help-section">
-        <h3>Data &amp; Backup</h3>
-        <p>Data lives on the SQL Server database. All users on the LAN share the same data. Local settings (theme, profile photo) are stored in your browser.</p>
+        <h3>The top bar</h3>
+        <table class="help-table">
+          <tr><td><strong>House</strong></td><td>Home: back to the job list</td></tr>
+          <tr><td><strong>+</strong></td><td>New Work Order</td></tr>
+          <tr><td><strong>Print</strong></td><td>The three prints</td></tr>
+          <tr><td><strong>Undo / Redo</strong></td><td>Ctrl+Z / Ctrl+Y, up to 15 steps back</td></tr>
+          <tr><td><strong>...</strong></td><td>Edit Job Details, Duplicate Job, Duplicate Component, Archive, Reset, Delete, Import, Export, Text Size, Manage CSRs &amp; Assignees</td></tr>
+          <tr><td><strong>Box</strong></td><td>Archive this job</td></tr>
+          <tr><td><strong>Book</strong></td><td>This guide</td></tr>
+          <tr><td><strong>Moon / Sun</strong></td><td>Dark mode</td></tr>
+          <tr><td><strong>Search checklist</strong></td><td>On a work order: lights the matching rows and opens folded sections</td></tr>
+          <tr><td><strong>Your initial</strong></td><td>The square at the far right (your photo, if you add one): your profile, Change user, how you are greeted</td></tr>
+        </table>
+        <p>On a read-only work order, the buttons that would change it are hidden: +, Undo, Redo and the box. The <strong>...</strong> menu keeps only Export, Text Size and Manage CSRs &amp; Assignees. Go Home first to start a new job or import.</p>
       </section>
 
       <section class="help-section">
-        <h3>Admin Password</h3>
-        <p>Deleting a job requires an admin password to prevent accidents.</p>
+        <h3>Keys</h3>
+        <p>For people who like the keys. The mouse works as before.</p>
+        <table class="help-table">
+          <tr><td><strong>Tab / Shift+Tab</strong></td><td>Next or previous box or button</td></tr>
+          <tr><td><strong>Instructions box</strong></td><td>Tab goes to the checklist. Shift+Tab goes to the toolbar. With words selected, Tab and Shift+Tab move a bullet in or out.</td></tr>
+          <tr><td><strong>Ctrl+Space</strong></td><td>In a checklist box: turns its switch on or off</td></tr>
+          <tr><td><strong>Space</strong></td><td>On a switch with no box: turns it on or off</td></tr>
+          <tr><td><strong>Enter</strong></td><td>On a job in the list: opens it</td></tr>
+          <tr><td><strong>Status</strong></td><td>Enter opens the list. The arrows choose. Enter sets it.</td></tr>
+          <tr><td><strong>... and Print</strong></td><td>Enter opens. The arrows move. Escape closes.</td></tr>
+          <tr><td><strong>Boxes</strong></td><td>New Job, Edit Job and Yes/No questions keep Tab inside. Left and Right move between the buttons at the bottom. Escape is Cancel in New Job and Edit Job. In New Job the arrows move through the components; Space picks one.</td></tr>
+        </table>
       </section>
 
       <section class="help-section">
-        <h3>Multi-User</h3>
-        <p>This app runs on the company LAN. Multiple people can view and edit jobs at the same time. If someone else edits a job you have open, you'll see a "Job updated on the server" popup with a <strong>Reload job</strong> button. Use <strong>Refresh</strong> on the landing page to pull the latest data from the server.</p>
+        <h3>Archived and deleted jobs</h3>
+        <ul>
+          <li><strong>Archive</strong> (the box in the top bar, or the <strong>...</strong> menu) asks <span class="help-say">Archive this job?</span></li>
+          <li>Yes files the instructions into the Revisions and moves the job to the <strong>Archived</strong> list, below the job list.</li>
+          <li>If QC Review is running on the job, the question first says where it stands. See the QC Review tab.</li>
+          <li>An archived job cannot be changed until it is restored.</li>
+          <li><strong>Delete</strong> (the <strong>...</strong> menu) deletes the job for good. It asks for the admin password, then <span class="help-say">Permanently delete this job?</span></li>
+          <li>If the job had QC Review, its QC record is kept. See "Deleted jobs" in the QC Review tab.</li>
+        </ul>
+        <h4>The Archived list</h4>
+        <ul>
+          <li>The <strong>Search archive</strong> box: job number, client and project, in archived jobs only.</li>
+          <li><strong>View</strong>, or click the job's name: the work order, read only, with QC Review in its header. Print works. <strong>Home</strong> brings you back.</li>
+          <li><strong>Restore</strong>: back to the job list.</li>
+          <li>The red <strong>&times;</strong>: deletes it for good, after the admin password and a question.</li>
+        </ul>
       </section>
 
       <section class="help-section">
-        <h3>Signing In</h3>
-        <p>The app uses your Windows account. Your browser asks for your Windows username and password the first time you open it.</p>
-        <p>If you type them wrong you'll get a sign-in failed page. <strong>Reloading will not bring the login box back</strong> and neither will a hard refresh. The only way to try again is to quit your browser completely and reopen it. A different browser does not give you extra tries.</p>
-        <p>After <strong>three</strong> failed tries your Windows account locks. That locks you out of your computer, not just this app, and only IT can unlock it. A wrong username counts against you the same as a wrong password, so check both before you submit.</p>
+        <h3>Import and Export</h3>
+        <ul>
+          <li><strong>Export</strong> (the <strong>...</strong> menu): check the jobs you want and save them as a .json file.</li>
+          <li><strong>Import</strong>: pick a .json file. Each job in it shows as <strong>New</strong> (added), <strong>Up to date</strong> (left alone), <strong>Newer</strong> or <strong>Older</strong> than the job here.</li>
+          <li>Newer starts checked, Older does not. A checked job is replaced by the file's copy, its components and Revisions included.</li>
+          <li>A job somebody has open is skipped and named.</li>
+          <li>If the file would leave QC Review checklists without their component, it says so first. See the QC Review tab.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>Your profile</h3>
+        <ul>
+          <li>Click the square with your initial, top right. Your profile opens.</li>
+          <li>Your profile holds your name, <strong>Change user</strong>, a photo, and the name you want to be greeted by.</li>
+          <li>The name beside the square does nothing.</li>
+          <li>The photo, greeting name, text size and dark mode belong to this PC, not to you. The next person on this PC sees them too.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>When the app says no</h3>
+        <dl class="help-says">
+          <dt><strong>Don Marcotte is editing this job, last saved 2 min ago.</strong></dt>
+          <dd>Somebody else has the job. Read or print it, or press <strong>Take over</strong> if they have left it.</dd>
+          <dt><strong>Casey Newhire took over this job at 3:05 PM.</strong></dt>
+          <dd>Somebody took the job from you. Under that line, the box lists what you had not saved, still on your screen until you press OK. Or it says <span class="help-say">Everything you changed before that was saved.</span> To get the job back, press <strong>Take over</strong>, or <strong>Start editing</strong> if it is free, then type those again.</dd>
+          <dt><strong>This job was unlocked after 20 minutes without typing or clicking.</strong></dt>
+          <dd><span class="help-say">Press Start editing to carry on.</span></dd>
+          <dt><span class="help-say">This job was changed while your page was away.</span></dt>
+          <dd>Your PC slept or lost the server for a while, and the job changed meanwhile. Press <strong>Start editing</strong> to carry on with the latest copy.</dd>
+          <dt><span class="help-say">This job was archived.</span> / <span class="help-say">This job was deleted.</span></dt>
+          <dd>Somebody archived or deleted it while you had it open. Anything not saved is listed.</dd>
+          <dt><strong>Job 50369 is archived.</strong></dt>
+          <dd><span class="help-say">Restore it from the Archived list to change it.</span></dd>
+          <dt><strong>Don Marcotte is editing job 50365.</strong></dt>
+          <dd>A status change on the job list, on a job somebody has open. <span class="help-say">Open it to take over, or wait until they have finished.</span></dd>
+          <dt><strong>Not archived: 50365 (Don Marcotte is editing it).</strong> / <strong>Not deleted: ...</strong></dt>
+          <dd>From the bulk bar. <span class="help-say">Open a job to take it over.</span></dd>
+          <dt><span class="help-say">Job updated on the server.</span></dt>
+          <dd>The job changed in another window, yours or somebody else's, before your change was saved. Press <strong>Reload job</strong>, then make your change again.</dd>
+          <dt><span class="help-say">Nothing was printed.</span></dt>
+          <dd>Ends a box that stopped a print. The line above says why. Sort that out, then print again.</dd>
+          <dt><span class="help-say">Nothing to generate</span></dt>
+          <dd>On the Tech Services tab: <span class="help-say">No fields are checked. Fill in some fields first.</span></dd>
+          <dt><span class="help-say">Summary lines out of order</span></dt>
+          <dd><span class="help-say">Delete the grey marker lines by hand, then press Generate again.</span></dd>
+          <dt><strong>Missing required: ...</strong></dt>
+          <dd>On the job list for 5 seconds after Lock instructions. Open the job and fill in the rows marked <strong>*</strong>.</dd>
+          <dt><strong>Maximum 10 components allowed per job.</strong></dt>
+          <dd>Adding a component stops at 10.</dd>
+          <dt><span class="help-say">Incorrect password.</span></dt>
+          <dd>The admin password was wrong.</dd>
+          <dt><span class="help-say">Your last change was not saved. The app tries again every 10 seconds.</span></dt>
+          <dd>A yellow bar under the top bar. Keep working. When the change saves, the bar turns green: <span class="help-say">Saved.</span> If the yellow bar stays, tell IT.</dd>
+          <dt><span class="help-say">Your last change is too big to save. Remove a pasted picture and it will save.</span></dt>
+          <dd>The app does not try again by itself. Your next change to that component does.</dd>
+          <dt><span class="help-say">Your last change could not be saved.</span></dt>
+          <dd>You left a job while a change still would not save. <strong>Stay on this job</strong> keeps it on your screen, and the app keeps trying. <strong>Leave without saving</strong> throws it away.</dd>
+          <dt><strong>Job 50123: the status was not saved.</strong></dt>
+          <dd>A status change on the job list. <span class="help-say">The server had a problem. Try again in a moment.</span></dd>
+          <dt><strong>Job 50123: your last change was not saved.</strong></dt>
+          <dd>The server failed a save after you left the job. The box lists what was not saved. Open the job and make that change again.</dd>
+          <dt><span class="help-say">Server unreachable -- your changes are saved locally and will sync when it returns.</span></dt>
+          <dd>Keep working, but do not close or reload the page. When it is back: <span class="help-say">Server connection restored -- all changes synced.</span></dd>
+          <dt><span class="help-say">The user was changed in another tab. Reload the page.</span></dt>
+          <dd>Somebody picked another name in another tab of this browser. Reload the page.</dd>
+        </dl>
+      </section>
+
+      <section class="help-section">
+        <h3>For the admin</h3>
+        <p>The admin password is asked before:</p>
+        <ul>
+          <li>deleting a job (the <strong>...</strong> menu, the bulk bar, or the Archived list's red <strong>&times;</strong>)</li>
+          <li>any change in Manage CSRs &amp; Assignees</li>
+        </ul>
+        <p><strong>Manage CSRs &amp; Assignees</strong> (the <strong>...</strong> menu) holds the three lists people are picked from: CSRs, Prepress and Tech Services.</p>
+        <ul>
+          <li><strong>Add</strong> a name.</li>
+          <li><strong>Turn off</strong> someone who leaves. Names are never deleted, so old jobs keep them and the filters still find them. <strong>Turn on</strong> brings a name back.</li>
+          <li>Each row has a list of users: pick the user that person chooses when opening the app, then press <strong>Save</strong> on that row. The list reads "Not linked" until then.</li>
+          <li>QC Review needs that link. A person not linked is read only there and is left out of the emails.</li>
+          <li><strong>Link matching names</strong> links every name to the user with the same words, like David Marra and David.Marra. Names spelled differently (Sue Foster, Susan.Foster) are linked by hand.</li>
+          <li><strong>Email on</strong> / <strong>Email off</strong>, the switch on each row: Off means QC Review never puts them in To, on any list. The person stays on the list and can still be assigned and work the checklist.</li>
+          <li>Use Email off for someone on a department's list who does not do that department's QC. A new name starts with email on, unless that name is off on another list.</li>
+          <li><strong>Old names on jobs</strong>: names on jobs but not on the lists, usually old spellings. Move one onto the right name and every job using it changes at once.</li>
+        </ul>
+        <p>The list a name is on decides what that person may do in QC Review:</p>
+        <ul>
+          <li>Prepress names: the Prepress tab.</li>
+          <li>Tech Services names: the Tech Services tab.</li>
+          <li>CSRs: the CSR checklist, Sign back in, and Send to Prepress / Send to Tech Services. A CSR may also review a department's checklist once it is sent for review.</li>
+        </ul>
       </section>
 
       <section class="help-section help-section-limits">
-        <h3>Limits</h3>
+        <h3>Limits, and where things are kept</h3>
         <ul>
-          <li>10,000 active jobs</li>
-          <li>10 components per job</li>
-          <li>15 undo steps</li>
+          <li>10,000 active jobs. Adding components stops at 10 a job. 15 undo steps.</li>
+          <li>Jobs are kept on the shop's SQL Server, shared by everyone on the network.</li>
+          <li>Kept on this PC only: dark mode, text size, your photo and greeting name, the print (v2) count, and the guide tab you read last.</li>
         </ul>
+      </section>
+
+    </div>
+
+    <!-- ═══ TAB 2: QC REVIEW ═══ -->
+    <div class="help-body" id="helpPanelQc" role="tabpanel" aria-labelledby="helpTabQc" tabindex="0" hidden>
+
+      <section class="help-section">
+        <h3>What QC Review is for</h3>
+        <p>Before proofs go to a client, someone checks each department's work against a checklist. Then the CSR checks the sign-off proofs.</p>
+        <p>QC Review is where these checks are done and recorded: who checked what and when, and what was sent back and why.</p>
+        <p>A job is never finished. The proof often comes back from the client, so a job can go round many times. Each time is a <strong>round</strong>.</p>
+        <p>QC Review opens in its own window, over the job list or the work order. It never takes a work order from whoever is editing it.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>The path a job takes</h3>
+        <p>Prepress shown here. Tech Services goes the same way on its own tab, at the same time. The last column is the chip the job list shows after each step, when Prepress is the only department on the job.</p>
+        <div class="help-flow">
+          <div class="help-flow-head"><span class="help-flow-who">Who</span> <span class="help-flow-what">What they do</span> <span class="help-flow-act"><span class="help-flow-press">Button they press</span> <span class="help-flow-chip">QC column shows</span></span></div>
+          <ol class="help-flow-steps">
+            <li class="help-flow-step is-out"><div class="help-flow-row"><span class="help-flow-no">1</span> <span class="help-flow-who">Brandilee (CSR)</span> <span class="help-flow-what">finishes the work order, prints it to PDF and attaches it to the job in Midnight</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-outside">outside the app</span></span> <span class="help-flow-chip"></span></span></div></li>
+            <li class="help-flow-step"><div class="help-flow-row"><span class="help-flow-no">2</span> <span class="help-flow-who">Brandilee (CSR)</span> <span class="help-flow-what">hands 48127 to Prepress from the work order, with a line for them. An email to Prepress opens for her to send.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--red">Send to Prepress</span></span> <span class="help-flow-chip"><span class="help-chip is-new-job">NEW JOB</span></span></span></div></li>
+            <li class="help-flow-step"><div class="help-flow-row"><span class="help-flow-no">3</span> <span class="help-flow-who">Don (Prepress)</span> <span class="help-flow-what">does the work, then sends it for review (a note is optional). Don is now the operator.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--red">Send for review</span></span> <span class="help-flow-chip"><span class="help-chip is-ready">READY FOR REVIEW</span></span></span></div></li>
+            <li class="help-flow-step"><div class="help-flow-row"><span class="help-flow-no">4</span> <span class="help-flow-who">Sue (Prepress)</span> <span class="help-flow-what">opens it from the email and answers each line: check, N/A, or flag with a note</span> <span class="help-flow-act"><span class="help-flow-press"></span> <span class="help-flow-chip"><span class="help-chip is-in-review">IN REVIEW</span></span></span></div></li>
+            <li class="help-flow-step is-fix-top"><div class="help-flow-row"><span class="help-flow-no">5</span> <span class="help-flow-who">Sue</span> <span class="help-flow-what">flags what is wrong on the Letter and sends that block back to Don. An email to Don opens for her to send.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--outline">Corrections needed</span></span> <span class="help-flow-chip"><span class="help-chip is-corrections">CORRECTIONS</span></span></span></div></li>
+            <li class="help-flow-step is-fix"><div class="help-flow-row"><span class="help-flow-no">6</span> <span class="help-flow-who">Don</span> <span class="help-flow-what">fixes it on the work order or in the files and sends it back to Sue. An email to Sue opens for him to send.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--red">Fixed, ready for re-review</span></span> <span class="help-flow-chip"><span class="help-chip is-recheck">RE-CHECK</span></span></span></div></li>
+            <li class="help-flow-step is-fix-end"><div class="help-flow-row"><span class="help-flow-no">7</span> <span class="help-flow-who">Sue</span> <span class="help-flow-what">checks the flagged lines again and passes every block. An email to Don opens: QC passed.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--navy">Mark passed</span></span> <span class="help-flow-chip"><span class="help-chip is-send-to-csr">SEND TO CSR</span></span></span></div> <p class="help-flow-again">or sends it back again</p></li>
+            <li class="help-flow-step"><div class="help-flow-row"><span class="help-flow-no">8</span> <span class="help-flow-who">Don</span> <span class="help-flow-what">pastes where the finished files are and sends them to Brandilee. An email to her opens, with the paths.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--red">Send to CSR</span></span> <span class="help-flow-chip"><span class="help-chip is-with-csr">WITH CSR</span></span></span></div></li>
+            <li class="help-flow-step"><div class="help-flow-row"><span class="help-flow-no">9</span> <span class="help-flow-who">Brandilee</span> <span class="help-flow-what">checks the sign-off proofs against the CSR checklist on the CSR tab and passes it</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--navy">Mark passed</span></span> <span class="help-flow-chip"><span class="help-chip is-csr-passed">CSR PASSED</span></span></span></div></li>
+            <li class="help-flow-step is-out"><div class="help-flow-row"><span class="help-flow-no">10</span> <span class="help-flow-who">Brandilee</span> <span class="help-flow-what">sends the proofs to the client</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-outside">outside the app</span></span> <span class="help-flow-chip"><span class="help-chip is-csr-passed">CSR PASSED</span></span></span></div></li>
+            <li class="help-flow-step is-out is-keep"><div class="help-flow-row"><span class="help-flow-no">11</span> <span class="help-flow-who">Brandilee</span> <span class="help-flow-what">the client asks for changes: updates the work order and attaches the new PDF in Midnight</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-outside">outside the app</span></span> <span class="help-flow-chip"><span class="help-chip is-csr-passed">CSR PASSED</span></span></span></div></li>
+            <li class="help-flow-step"><div class="help-flow-row"><span class="help-flow-no">12</span> <span class="help-flow-who">Brandilee</span> <span class="help-flow-what">signs it back in with what the client asks for. An email to Prepress opens for her to send. The next round goes on from step 3.</span> <span class="help-flow-act"><span class="help-flow-press"><span class="help-btn help-btn--outline">Sign back in</span></span> <span class="help-flow-chip"><span class="help-chip is-came-back">CAME BACK</span></span></span></div> <span class="help-flow-round" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>3</span></span></li>
+          </ol>
+        </div>
+        <p>If the change adds a piece, row 11 reads IN REVIEW. The sign back in then joins Prepress's round: what she checks goes straight back to Don.</p>
+      </section>
+
+      <section class="help-section help-start">
+        <h3>Start here</h3>
+        <h4>If you are the CSR</h4>
+        <ol>
+          <li>When the work order is ready and its PDF is in Midnight, press <span class="help-btn help-btn--red">Send to Prepress</span> on its Prepress tab. On the Tech Services tab it is <strong>Send to Tech Services</strong>. Type what they need to know and press <strong>Send</strong>. A job for both departments gets one press on each tab.</li>
+          <li>When a department sends you its files, they send you an email with the paths. They are also under <strong>Outputs</strong> on the <strong>CSR</strong> tab of the QC Review window.</li>
+          <li>Check the sign-off proofs with the CSR checklist on the <strong>CSR</strong> tab, then press <span class="help-btn help-btn--navy">Mark passed</span>.</li>
+          <li>When the client asks for changes, update the work order and attach the new PDF in Midnight first. Then press <span class="help-btn help-btn--outline">Sign back in</span> on the CSR tab.</li>
+        </ol>
+        <h4>If you did the work (the operator)</h4>
+        <ol>
+          <li>Open <span class="help-btn help-btn--ink">QC Review</span> in the work order header, or click the job's QC cell on the job list. Stay on your department's tab.</li>
+          <li>Press <span class="help-btn help-btn--red">Send for review</span>. Add a note for the reviewer if you like, then press <strong>Send it</strong>. You are now the operator for this round, and someone else checks your work.</li>
+          <li>If a piece comes back for fixes, fix it, then press <span class="help-btn help-btn--red">Fixed, ready for re-review</span>.</li>
+          <li>When every block has passed, press <span class="help-btn help-btn--red">Send to CSR</span>. Paste where the files are and press <strong>Send it</strong>.</li>
+        </ol>
+        <h4>If you are checking it (the reviewer)</h4>
+        <ol>
+          <li>The email "Ready for Prepress review" (or Tech Services) is your call. Open it with the email's Open QC Review link or the job list's QC cell.</li>
+          <li>Open each block. Check off each line you have checked. Mark <strong>N/A</strong> what does not apply. Flag what is wrong, with a note saying what needs fixing.</li>
+          <li>A block with nothing wrong: <span class="help-btn help-btn--navy">Mark passed</span>. A block with flags: <span class="help-btn help-btn--outline">Corrections needed</span>, then <strong>Send it back</strong>.</li>
+          <li>When it comes back fixed, check the flagged lines again and pass it.</li>
+        </ol>
+      </section>
+
+      <section class="help-section">
+        <h3>The QC Review window</h3>
+        <p>Open it from any of these:</p>
+        <ul>
+          <li>the job's QC cell on the job list</li>
+          <li><strong>QC Review</strong> in the work order header</li>
+          <li>the <strong>Open QC Review</strong> link in an email</li>
+          <li>a deleted job's <strong>QC record</strong> button</li>
+        </ul>
+        <p>Each tab is a checklist: <strong>Prepress</strong>, <strong>Tech Services</strong> and <strong>CSR</strong>. A checklist is in <strong>blocks</strong>:</p>
+        <ul>
+          <li>Prepress: one block per piece, and a <strong>Whole Job</strong> block.</li>
+          <li>Tech Services and CSR: one block for the whole job.</li>
+        </ul>
+        <div class="help-pic-map" aria-hidden="true">
+          <span class="help-map-win">
+            <span class="help-map-head"><span class="help-map-title">QC Review</span><span class="help-map-x">&times;</span></span>
+            <span class="help-map-tabs"><span class="help-map-tab is-on"><span class="help-map-dot"></span>Prepress</span><span class="help-map-tab"><span class="help-map-dot"></span>Tech Services</span><span class="help-map-tab"><span class="help-map-dot"></span>CSR</span><span class="help-map-no">1</span></span>
+            <span class="help-map-body">
+              <span class="help-map-left">
+                <span class="help-map-block is-open">
+                  <span class="help-map-bhead"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="help-map-bar is-name w24"></span><span class="help-map-no is-pin">2</span></span>
+                  <span class="help-map-bbody">
+                    <span class="help-map-btns"><span class="help-map-no">5</span><span class="help-map-btn is-outline"></span><span class="help-map-btn is-navy"></span></span>
+                    <span class="help-map-stitle"><span class="help-map-bar is-title"></span><span class="help-map-fill"></span><span class="help-map-no">4</span><span class="help-map-checkall"></span></span>
+                    <span class="help-map-line"><span class="help-map-no is-pin">3</span><span class="help-map-box is-on"></span><span class="help-map-bar w44"></span><span class="help-map-fill"></span><span class="help-map-na"></span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
+                    <span class="help-map-line"><span class="help-map-box is-on"></span><span class="help-map-bar w36"></span><span class="help-map-fill"></span><span class="help-map-na"></span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
+                    <span class="help-map-line"><span class="help-map-box"></span><span class="help-map-bar w50"></span><span class="help-map-fill"></span><span class="help-map-na"></span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
+                  </span>
+                </span>
+                <span class="help-map-block"><span class="help-map-bhead"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg><span class="help-map-bar is-name w32"></span></span></span>
+                <span class="help-map-block"><span class="help-map-bhead"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg><span class="help-map-bar is-name w28"></span></span></span>
+              </span>
+              <span class="help-map-right"><span class="help-map-no is-pin">6</span><span class="help-map-btn is-red"></span><span class="help-map-acttitle"><span class="help-map-bar is-label"></span><span class="help-map-no">7</span></span><span class="help-map-entry"><span class="help-map-bar is-when"></span><span class="help-map-bar w88"></span></span><span class="help-map-entry"><span class="help-map-bar is-when"></span><span class="help-map-bar w70"></span></span><span class="help-map-entry"><span class="help-map-bar is-when"></span><span class="help-map-bar w80"></span></span></span>
+            </span>
+          </span>
+          <span class="help-map-key"><span><span class="help-map-no">1</span>Tabs</span><span><span class="help-map-no">2</span>Blocks</span><span><span class="help-map-no">3</span>A line</span><span><span class="help-map-no">4</span>Check all</span><span><span class="help-map-no">5</span>A block's own buttons</span><span><span class="help-map-no">6</span>The right side</span><span><span class="help-map-no">7</span>Activity</span></span>
+        </div>
+        <h4>A line</h4>
+        <div class="help-pic-bigline" aria-hidden="true">
+          <span class="help-bigline-row"><span class="help-bigline-box"></span><span class="help-bigline-words">Bleeds included</span><span class="help-bigline-na">N/A</span><span class="help-bigline-flag"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span></span>
+          <span class="help-bigline-labels"><span class="is-box">Check box</span><span class="help-map-fill"></span><span class="is-na">N/A</span><span class="is-flag">Flag</span></span>
+        </div>
+        <ul>
+          <li>To check a line, click anywhere on it. On a flagged line, click its check box. <strong>Check all</strong>, beside a section's title, checks every line in it that nobody has answered yet. <strong>Undo</strong> takes back exactly those.</li>
+          <li><strong>N/A</strong>: the line does not apply. A line marked N/A does not count against a pass.</li>
+          <li>The flag button: something is wrong. Say what in the box that opens. A flag stops the block from passing.</li>
+        </ul>
+        <h4>The right side</h4>
+        <p>Each block has its own buttons, such as Mark passed. The right side holds the rest, such as Send for review and Send to CSR. Its <strong>Activity</strong> list shows what was done on the job's QC and by whom, newest first. Every check is recorded too, but not listed.</p>
+        <p>Everything saves as you go. If you close the window with something not sent, it asks first. Press <strong>Cancel</strong> to go back and send it.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>The CSR's part</h3>
+        <h4>Handing a new job to a department</h4>
+        <p>On the work order's Prepress tab, press <span class="help-btn help-btn--red">Send to Prepress</span>. On the Tech Services tab it is <strong>Send to Tech Services</strong>. Type what they need to know and press <strong>Send</strong>.</p>
+        <ul>
+          <li>Your line goes in the email and the QC activity. The email to the department opens in Outlook for you to send. The job list then reads NEW JOB.</li>
+          <li>Pressed it by mistake? Press it again, then <strong>Sent by mistake</strong>. A second email opens, telling them to ignore the first.</li>
+          <li>Only CSRs see these buttons, and only until the department picks the job up.</li>
+          <li>Pressing it is optional. A department can start QC Review on any job without it.</li>
+        </ul>
+        <h4>The CSR checklist</h4>
+        <p>On the <strong>CSR</strong> tab, check the finished sign-off proofs after the departments. Only CSRs fill it in. It has no Corrections needed. When something is wrong, sign the job back in.</p>
+        <h4>Signing a job back in</h4>
+        <p>When the client asks for changes, or anything else needs another round, sign the job back in. Only a CSR can.</p>
+        <ol>
+          <li>Update the work order instructions and attach the new PDF in Midnight <span class="help-outside">outside the app</span>.</li>
+          <li>To flag lines on your CSR checklist after passing it, press <span class="help-btn help-btn--quiet">Reopen</span> first.</li>
+          <li>On the CSR tab, press <span class="help-btn help-btn--outline">Sign back in</span>. Fill in the sheet and press <strong>Sign it back in</strong>.</li>
+        </ol>
+        <ul>
+          <li><strong>What is being asked for</strong> goes in the email and at the top of the department's tab. It never goes into the work order.</li>
+          <li>Check <strong>This round goes to production</strong> when this round is the live files. PRODUCTION then shows under the job's QC chip.</li>
+          <li>The blocks you check are cleared for a new round. An email to each department opens for you to send.</li>
+          <li>If a department's round is still going, your change joins it. Those blocks go straight back to its operator.</li>
+        </ul>
+        <h4>Covering a review</h4>
+        <p>Any CSR can check a department's checklist once it is sent for review. It is for when nobody in the department can. Your checks count. You cannot press Send for review, Fixed or Send to CSR.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>The operator's part</h3>
+        <p>The <strong>operator</strong> is whoever pressed Send for review that round, usually whoever did the work. Every round needs it. Until someone presses it, the department's checklist is read only for everyone.</p>
+        <ul>
+          <li><span class="help-btn help-btn--red">Send for review</span>: anyone on that department's list may press it. Add a note for the reviewer if you like, then press <strong>Send it</strong>. An email to the rest of the department opens for you to send.</li>
+          <li>Once you have sent it, you cannot review it. Someone else checks it.</li>
+          <li>When a reviewer sends a piece back, they email you. Fix what is flagged, on the work order or in the files. Then press <span class="help-btn help-btn--red">Fixed, ready for re-review</span>. It goes back to whoever sent it back, and an email to them opens.</li>
+          <li>A piece the CSR signed back in while your round was going comes straight to you, marked <strong>Signed back in by</strong> the CSR. Do the change, then press Fixed. Until you do, nobody can check it.</li>
+          <li>When every block has passed, the reviewer emails you "QC passed". Press <span class="help-btn help-btn--red">Send to CSR</span>, paste the paths and press <strong>Send it</strong>. An email to the CSR opens with the paths. Anyone on the department's list may send them.</li>
+          <li>If a block is reopened after the files went, the window says so. On the Prepress tab, so does an added piece. Once every block has passed again, press <strong>Send again</strong>.</li>
+          <li>Someone else on the department's list can ask you to send the files. The window then says who asked.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>The reviewer's part</h3>
+        <p>Anyone on that department's list except the operator may check the work. A CSR may cover. Whoever changes something first is shown as the <strong>Reviewer</strong>.</p>
+        <ul>
+          <li>Open each block and go through the lines: check, <strong>N/A</strong> or flag.</li>
+          <li><span class="help-btn help-btn--navy">Mark passed</span> works once every line is answered and nothing is flagged. A passed block is locked. To change it, press <span class="help-btn help-btn--quiet">Reopen</span>.</li>
+          <li><span class="help-btn help-btn--outline">Corrections needed</span>, then <strong>Send it back</strong>, sends the block to the operator with your flags. Once a block is back with the operator, Corrections needed stays grey until you add a flag or change a note.</li>
+          <li>When the operator presses Fixed, they email you. Check off each flagged line that is fixed. Then pass the block, or send it back again.</li>
+          <li>A CSR change that joined your round says, after Fixed, <span class="help-say">Check every line again: it came back from the CSR.</span> Otherwise the block comes back cleared, and the tab says what came back.</li>
+          <li><strong>Ask the operator to send them</strong> shows once every block has passed and the files have not gone. Anyone on the department's list except the operator can press it. An email to the operator opens. Your own Send to CSR goes grey while your ask stands.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>Signed sheets</h3>
+        <p>Every pass freezes the sheet as it was signed. It keeps:</p>
+        <ul>
+          <li>each check, N/A and N/A reason, and each flag</li>
+          <li>who signed it and when</li>
+          <li>that department's instructions as they stood (both departments on the CSR's sheet)</li>
+        </ul>
+        <p>To see one, press <strong>See the signed sheet</strong> on a passed entry in the <strong>Activity</strong> list. An entry with several blocks passed together has a link for each, named after the block.</p>
+        <p><strong>Export</strong> prints it or saves it as a PDF. So does Ctrl+P while the sheet is open.</p>
+        <p><strong>Export all</strong>, on the right of the <strong>Activity</strong> heading, prints every signed sheet of the job in one PDF, oldest first.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>The QC column on the job list</h3>
+        <p>Each job has one chip, saying the step it is at. When Prepress and Tech Services are at different steps, the one higher in this table shows. Rest the mouse on the chip to see each checklist's step.</p>
+        <table class="help-table help-chips">
+          <tr><td><span class="help-chip is-corrections">CORRECTIONS</span></td><td>A block was sent back. The operator fixes it.</td></tr>
+          <tr><td><span class="help-chip is-recheck">RE-CHECK</span></td><td>The operator pressed Fixed. A reviewer checks it again.</td></tr>
+          <tr><td><span class="help-chip is-came-back">CAME BACK</span></td><td>The CSR signed it back in. The department does the work and sends it for review.</td></tr>
+          <tr><td><span class="help-chip is-new-job">NEW JOB</span></td><td>The CSR handed it to the department. Nobody has sent it for review yet.</td></tr>
+          <tr><td><span class="help-chip is-ready">READY FOR REVIEW</span></td><td>Sent for review. Nobody has started checking.</td></tr>
+          <tr><td><span class="help-chip is-in-review">IN REVIEW</span></td><td>Someone is checking it.</td></tr>
+          <tr><td><span class="help-chip is-send-to-csr">SEND TO CSR</span></td><td>Every block passed. The files have not gone to the CSR.</td></tr>
+          <tr><td><span class="help-chip is-with-csr">WITH CSR</span></td><td>The files went to the CSR. The CSR checks the proofs.</td></tr>
+          <tr><td><span class="help-chip is-csr-passed">CSR PASSED</span></td><td>The CSR passed the proofs, until the job comes back.</td></tr>
+        </table>
+        <ul>
+          <li>An empty cell: nobody has started QC Review on the job.</li>
+          <li>PRODUCTION under the chip: the CSR's last sign back in was a production round.</li>
+          <li>After the files went to the CSR, reopening a department block puts the chip back to IN REVIEW. So does adding a piece, when Prepress checks the job. The hover names an added piece until someone answers a line on it.</li>
+          <li>When a piece's words or pictures change after its block passed, the hover and the window say so, for example <span class="help-say">Letter instructions changed after the pass</span>. The pass stands. The line goes when the block passes again or is signed back in.</li>
+          <li>A click anywhere in the QC cell opens the QC Review window on that job. It never opens the work order and never takes it from anyone.</li>
+          <li>The <strong>Corrections</strong> choice under Show lists the jobs at CORRECTIONS. Click the QC header to sort by step.</li>
+        </ul>
+      </section>
+
+      <section class="help-section">
+        <h3>The emails</h3>
+        <p>The app never sends an email. When your press would tell somebody, a new Outlook message opens on your screen, filled in. You press Send.</p>
+        <ul>
+          <li>To, the subject and the words are filled in. You can add a name or a line first.</li>
+          <li>The email comes from your own mailbox, like one you wrote yourself.</li>
+          <li>The record is in QC Review. The activity says "Email opened in Outlook for" and the names in To.</li>
+          <li>You are never put in To for your own press.</li>
+          <li>Someone whose name is not linked to a user is left out. The job's activity says so.</li>
+          <li>Someone whose Email switch is off in Manage CSRs &amp; Assignees is left out too. When the email was for that one person, the job's activity names them.</li>
+          <li>A department with a group address gets four emails there, not each name: new job, Sent by mistake, Send for review, sign back in.</li>
+          <li>Each email has an <strong>Open QC Review</strong> link. It opens the window on that job, tab and piece.</li>
+          <li>The new job and signed back in emails also have <strong>Open work order 48127</strong>. It opens the work order for editing, like clicking its row.</li>
+          <li>A press that tells two groups opens two messages, one after the other.</li>
+        </ul>
+        <p>Every email about a job has the same subject, <strong>48127 QC Review</strong>, so Outlook keeps them in one conversation. The big line at the top of each email says what it is about:</p>
+        <table class="help-table help-mail">
+          <tr><td><strong>48127 is a new job for Prepress</strong></td><td>The CSR pressed Send to Prepress. To the department (its group address, or everyone on its list).</td></tr>
+          <tr><td><strong>48127 was sent to Prepress by mistake</strong></td><td>The CSR pressed Sent by mistake. To the same people.</td></tr>
+          <tr><td><strong>Ready for Prepress review</strong></td><td>Send for review. To the rest of the department: check it.</td></tr>
+          <tr><td><strong>Letter sent back for fixes</strong></td><td>Corrections needed. To the operator: fix it, then press Fixed.</td></tr>
+          <tr><td><strong>Letter is ready for re-review</strong></td><td>Fixed. To whoever sent it back, or for a CSR's change whoever is reviewing the round: check it again.</td></tr>
+          <tr><td><strong>Prepress QC passed</strong></td><td>Every block passed. To the operator: send the files to the CSR.</td></tr>
+          <tr><td><strong>Please send the Prepress files to the CSR</strong></td><td>A reviewer asked. To the operator.</td></tr>
+          <tr><td><strong>Success: Prepress outputs are ready</strong></td><td>Send to CSR, with the paths. To the job's CSR: check the proofs.</td></tr>
+          <tr><td><strong>Letter came back from the CSR</strong></td><td>Sign back in, with what is asked for and the flags. A production round says so. To the department.</td></tr>
+        </table>
+        <p>Tech Services gets the same emails with "Tech Services" in them.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>Archiving, deleting or importing a job with QC</h3>
+        <ul>
+          <li>Every way to archive first warns you, unless the job is at CSR PASSED. The warning says where QC Review has got to, and <span class="help-say">Archiving takes it off the QC list and locks its reviewers out until it is restored.</span> It never stops you.</li>
+          <li>To read an archived job's QC, open the Archived list, press <strong>View</strong> on the job, then <strong>QC Review</strong>. It is read only.</li>
+          <li>Deleting a job keeps its QC record. It opens from Deleted jobs at the bottom of the job list.</li>
+          <li><strong>Import</strong> warns when the file leaves checklists without their piece.</li>
+        </ul>
+        <h4>Deleted jobs</h4>
+        <p><strong>Deleted jobs</strong>, under the Archived list, lists every deleted job that had QC Review, newest first. Its <strong>QC record</strong> button opens the job's QC history and signed sheets, read only.</p>
+      </section>
+
+      <section class="help-section">
+        <h3>When QC Review says no</h3>
+        <dl class="help-says">
+          <dt><strong>Don.Marcotte</strong> <span class="help-say">is not linked to a name on the lists yet.</span></dt>
+          <dd><span class="help-say">Everything here is read only until an admin links it in Manage CSRs &amp; Assignees.</span> Ask the admin to put your name on your department's list there and link it to your name from the picker.</dd>
+          <dt><span class="help-say">Read only until it is sent for review.</span></dt>
+          <dd>Nobody has pressed Send for review this round. The person who did the work presses it.</dd>
+          <dt><span class="help-say">You are the operator, so you cannot review this.</span></dt>
+          <dd>You sent it for review, so someone else checks it.</dd>
+          <dt><span class="help-say">Only CSRs fill in the CSR checklist.</span> / <strong>Only Prepress can review this.</strong></dt>
+          <dd>Your name is on another list. Ask the admin if it should be on this one too.</dd>
+          <dt><span class="help-say">This job is archived. Restore it before reviewing.</span></dt>
+          <dd>Restore it from the Archived list first.</dd>
+          <dt><strong>Nothing to check until Don Marcotte presses Fixed.</strong></dt>
+          <dd>The CSR sent a change to the operator. Wait for Fixed.</dd>
+          <dt><span class="help-say">Nothing is flagged yet. Flag what needs fixing first.</span></dt>
+          <dd>Corrections needed sends flags. Flag a line first.</dd>
+          <dt><span class="help-say">Nothing new to send.</span> (or Corrections needed is grey)</dt>
+          <dd>Those flags have already gone. Add a flag or change a note to send again.</dd>
+          <dt><strong>Not saved: someone else changed Letter.</strong></dt>
+          <dd>Someone, or you in another window, changed that block after this window last loaded it. The line names what to check. Look at it and do it again.</dd>
+          <dt><strong>Not saved: Brandilee Czajkowski signed Letter back in.</strong></dt>
+          <dd>The CSR changed the piece while you were on it, so your click did not count. The line says what to do again, and when.</dd>
+          <dt><span class="help-say">QC Review is not set up on this server yet.</span></dt>
+          <dd>Tell IT.</dd>
+          <dt><span class="help-say">Not saved: the server had a problem. Your next change tries again.</span></dt>
+          <dd>Carry on. If it keeps saying so, tell IT.</dd>
+        </dl>
+      </section>
+
+      <section class="help-section help-section-limits">
+        <h3>Words</h3>
+        <dl class="help-words">
+          <dt>Operator</dt><dd>Whoever pressed Send for review this round, usually whoever did the work. Cannot check their own work.</dd>
+          <dt>Reviewer</dt><dd>Whoever checks the work: anyone else on that department's list, or a CSR covering.</dd>
+          <dt>Round</dt><dd>One trip through QC Review. A sign back in starts the next one. If a department's round is still going, the sign back in joins it.</dd>
+          <dt>Sign back in</dt><dd>The CSR sends a job back to one or both departments for another round.</dd>
+          <dt>N/A</dt><dd>The line does not apply to this job. It does not count against a pass.</dd>
+          <dt>Flag</dt><dd>The line is wrong, with a note saying what needs fixing. A flagged block cannot pass.</dd>
+          <dt>Piece</dt><dd>A component on the work order (the Letter, the Envelope).</dd>
+        </dl>
       </section>
 
     </div>
@@ -1479,7 +2107,7 @@
 <!-- Manage CSRs & Assignees. Adding and deactivating both need the admin
      password, which is checked on the server, not here. -->
 <div id="rosterModal" class="modal">
-  <div class="modal-content" style="max-width:520px;">
+  <div class="modal-content" style="max-width:620px;">
     <h3 style="margin-bottom:var(--space-sm);">Manage CSRs &amp; Assignees</h3>
     <p class="roster-help">Names people can be picked from. Someone who leaves is turned off, not deleted, so their old jobs keep their name and still show up in the filters.</p>
 
@@ -1495,6 +2123,13 @@
     </div>
 
     <div id="rosterList" class="roster-list"></div>
+
+    <!-- QC Review: each name is linked to a user from the user list. -->
+    <div id="rosterLinkUsersWrap" class="roster-link-users" hidden>
+      <button type="button" class="roster-toggle" id="rosterLinkUsers" onclick="linkMatchingRosterNames()">Link matching names</button>
+      <span class="roster-link-help">Links each name to the user with the same words, like David Marra and David.Marra.</span>
+      <p id="rosterLinkResult" class="roster-link-result" hidden></p>
+    </div>
 
     <div class="roster-add">
       <input type="text" id="rosterNewName" placeholder="Add a name..." autocomplete="off"
@@ -1544,9 +2179,73 @@
   </div>
 </div>
 
+<!-- The edit lock's box (EDIT_LOCK_PLAN): the Take over confirm, "took over
+     this job", the idle unlock, a refusal from the job list. After
+     #reviewModal on purpose: review.js treats a box that follows it as
+     painted over the QC Review window, so it can be pressed while that
+     window is open. app.js fills the words (lockBox). -->
+<div id="lockModal" class="modal">
+  <div class="modal-content lock-modal-content">
+    <p class="lock-modal-title" id="lockModalTitle"></p>
+    <p class="lock-modal-text" id="lockModalText"></p>
+    <p class="lock-modal-detail" id="lockModalDetail" style="display:none;"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" type="button" id="lockModalCancel">Cancel</button>
+      <button class="btn-save" type="button" id="lockModalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ USER PICKER ═══ -->
+<!-- Who is using the app: an honor-system user picker, not a sign-in
+     (js/user-picker.js). Last in the page so it paints over every other
+     window, and shown from the first paint (is-starting: see-through, nothing
+     behind it clickable) until the app knows whose page this is. -->
+<div id="userPickerModal" class="modal user-picker-modal is-starting" style="display:block;" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="userPickerTitle">
+  <div class="modal-content user-picker-content">
+    <div id="userPickerChoose" hidden>
+      <h3 id="userPickerTitle" class="user-picker-title">Choose your name</h3>
+      <p id="userPickerRemoved" class="user-picker-removed" hidden></p>
+      <div id="userPickerSearchWrap" class="user-picker-search-wrap">
+        <input type="text" id="userPickerSearch" class="user-picker-search" placeholder="Type your name..." autocomplete="off" spellcheck="false"
+               role="combobox" aria-autocomplete="list" aria-controls="userPickerList" aria-expanded="false" aria-label="Type your name">
+        <div id="userPickerList" class="user-picker-list" role="listbox" aria-label="Names" hidden></div>
+        <p id="userPickerEmpty" class="user-picker-empty" hidden>No names match.</p>
+      </div>
+      <p id="userPickerUnavailable" class="user-picker-unavailable" hidden></p>
+      <div class="modal-buttons user-picker-buttons">
+        <button type="button" id="userPickerRetry" class="btn-cancel" hidden>Try again</button>
+        <button type="button" id="userPickerCancel" class="btn-cancel" hidden>Cancel</button>
+        <button type="button" id="userPickerNext" class="btn-save" disabled>Next</button>
+      </div>
+    </div>
+    <div id="userPickerConfirm" hidden>
+      <p id="userPickerChoosing" class="user-picker-choosing">You are choosing</p>
+      <p id="userPickerConfirmName" class="user-picker-confirm-name"></p>
+      <p id="userPickerConfirmUser" class="user-picker-confirm-user"></p>
+      <div class="modal-buttons user-picker-buttons">
+        <button type="button" id="userPickerBack" class="btn-cancel">Back</button>
+        <button type="button" id="userPickerContinue" class="btn-save">Continue</button>
+      </div>
+    </div>
+    <div id="userPickerChanged" hidden>
+      <p id="userPickerChangedText" class="user-picker-title"></p>
+      <div class="modal-buttons user-picker-buttons">
+        <button type="button" id="userPickerReload" class="btn-save">Reload the page</button>
+      </div>
+    </div>
+    <p id="userPickerHelp" class="user-picker-help" hidden>If your name does not appear in the list, contact an administrator or the IT department.</p>
+  </div>
+</div>
+
 <script src="js/prepress.js"></script>
 <script src="js/techservices.js"></script>
+<script src="js/review-items.js"></script>
+<script src="js/review-board.js"></script>
+<script src="js/paste-path.js"></script>
+<script src="js/user-picker.js"></script>
 <script src="js/app.js"></script>
+<script src="js/review.js"></script>
 <script src="js/meeting-attendees.js"></script>
 <script src="js/ui-toggles.js"></script>
 

@@ -80,8 +80,18 @@
     function buildList(widget) {
         const listEl = widget.querySelector('.meeting-attendees-list');
         if (!listEl) return;
-        const roster = getCombinedRoster();
         const selected = new Set(parseValue(getHidden(widget).value));
+        // A stored attendee who is on no list (switched off in Manage CSRs &
+        // Assignees, or an old spelling) gets a checked box too, so Apply, a
+        // check or Clear never drops a name nobody unchecked (the after-rollout
+        // batch, item 6, R19). Sorted in with the rest, so a list the picker
+        // wrote comes back in the same order and Apply with nothing changed
+        // writes nothing.
+        const listed = getCombinedRoster();
+        const onList = new Set(listed.map(entry => entry.name));
+        const roster = listed.concat(Array.from(selected).filter(name => !onList.has(name))
+            .map(name => ({ name, role: 'Not on the list' })))
+            .sort((a, b) => a.name.localeCompare(b.name));
 
         listEl.innerHTML = roster.map(entry => {
             const checked = selected.has(entry.name) ? 'checked' : '';
@@ -233,6 +243,9 @@
     function syncAllWidgets() {
         document.querySelectorAll('.meeting-attendees').forEach(syncFromValue);
     }
+    // app.js calls it once a piece is drawn (loadComponentData), so a job
+    // opened straight onto Tech Services shows its own attendees.
+    window.syncMeetingAttendees = syncAllWidgets;
 
     // Initial render + delegated close-on-outside-click
     document.addEventListener('DOMContentLoaded', () => {

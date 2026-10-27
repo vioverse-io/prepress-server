@@ -66,16 +66,16 @@ window.DEPT_REGISTRY.techservices = {
             { cbId: 'ts_sp40', noteId: 'ts_sp40n', label: 'Suppression file match' },
             { cbId: 'ts_sp42', noteId: 'ts_sp42n', label: 'Rollup/Table' },
             { cbId: 'ts_cb50a', noteId: 'ts_cb50a_n', label: 'Match job' },
-            { cbId: 'ts_cb50b', noteId: 'ts_cb50b_n', label: 'Match/Append' },
-            { cbId: 'ts_sp51', noteId: 'ts_sp51n', label: 'Casing' }
+            { cbId: 'ts_cb50b', noteId: 'ts_cb50b_n', label: 'Match/Append' }
         ]},
         { title: 'Print', fields: [
             { cbId: 'ts_cb90', noteId: 'ts_cb90_attendees', label: '\u26A0 Meeting required' },
             { cbId: 'ts_sp91', noteId: 'ts_sp91n', label: 'Variables beyond address' },
-            { cbId: 'ts_sp92', noteId: 'ts_sp92n', label: 'Number of letter versions' },
-            { cbId: 'ts_sp93a', noteId: 'ts_sp93an', label: '\u00A0\u00A0Signoffs per letter version' },
-            { cbId: 'ts_sp95', noteId: 'ts_sp95n', label: 'Samples per letter version' },
-            { cbId: 'ts_sp94', noteId: 'ts_sp94n', label: '  Samples — address info' }
+            { cbId: 'ts_sp92', noteId: 'ts_sp92n', label: 'Number of versions' },
+            { cbId: 'ts_sp93a', noteId: 'ts_sp93an', label: '\u00A0\u00A0Signoffs per version' },
+            { cbId: 'ts_sp95', noteId: 'ts_sp95n', label: 'Samples per version' },
+            { cbId: 'ts_sp94', noteId: 'ts_sp94n', label: '  Samples — address info' },
+            { cbId: 'ts_sp51', noteId: 'ts_sp51n', label: 'Casing' }
         ]}
     ],
 
@@ -91,10 +91,21 @@ window.DEPT_REGISTRY.techservices = {
         const checks = comp.checkboxes || {};
         const notes  = comp.notes || {};
         const pairs = [];
-        (this.PRINT_SECTIONS || []).forEach(sec => {
+        // The registry's own sections, never `this`: the prints used to copy
+        // this function into a variable and call it on its own, so `this` was
+        // the window and the fingerprint came back '' (every print after
+        // Generate said outdated; PRINT_UPDATE_PLAN.md).
+        (window.DEPT_REGISTRY.techservices.PRINT_SECTIONS || []).forEach(sec => {
             (sec.fields || []).forEach(f => pairs.push({ cb: f.cbId, note: f.noteId }));
         });
-        return pairs.map(p => (checks[p.cb] ? '1' : '0') + ':' + (notes[p.note] || '')).join('|');
+        // Only the fields the summary reads (ticked, value trimmed as the
+        // summary trims it, in id order), so a field added later changes
+        // nothing until somebody ticks it. The piece's name only where the
+        // summary uses it, the data conversion lead (a data file or a split),
+        // so a rename alone does not read as a change on this tab.
+        const fields = pairs.filter(p => checks[p.cb]).map(p => p.cb + '=' + (notes[p.note] || '').trim()).sort();
+        const nameMatters = !!checks.ts_fp10 || !!checks.ts_sp21 || !!(checks.ts_sp22 && (notes.ts_sp22n || '').trim());
+        return [nameMatters ? (comp.name || '') : ''].concat(fields).join('|');
     },
 
     // No QC validation rules for TS yet. Returns empty array so the dispatcher's
@@ -264,26 +275,17 @@ window.DEPT_REGISTRY.techservices = {
         // ts_sp42n entry in PRINT_SECTIONS never holds a value.
         if (chk('ts_sp42')) dedup.push('Rollup and table relationships applied.');
 
-        const matchVal = val('ts_cb50a', 'ts_cb50a_n');
+        // The Match/Append box holds the specifics ("append phone and email"),
+        // added after a colon. A full stop typed at the end is dropped so the
+        // sentence does not end in two. The tick alone keeps its old words.
+        const matchVal  = val('ts_cb50a', 'ts_cb50a_n');
+        const appendVal = val('ts_cb50b', 'ts_cb50b_n').replace(/[\s.,;:]+$/, '');
+        const appendTail = appendVal ? ': ' + appendVal : '';
         if (chk('ts_cb50a')) {
             dedup.push(cap(matchVal ? matchVal + ' match job' : 'match job') +
-                       (chk('ts_cb50b') ? ' with match/append.' : '.'));
+                       (chk('ts_cb50b') ? ' with match/append' + appendTail + '.' : '.'));
         } else if (chk('ts_cb50b')) {
-            dedup.push('Match/append pass.');
-        }
-
-        // Casing values pair a case treatment with a punctuation treatment
-        // ("Upper/Lower, No Punctuation"). Split them so the comma inside the
-        // value does not read as a second list item.
-        const casingVal = val('ts_sp51', 'ts_sp51n');
-        if (casingVal) {
-            const commaIdx = casingVal.indexOf(',');
-            dedup.push(commaIdx === -1
-                ? 'Casing is ' + casingVal + '.'
-                : 'Casing is ' + casingVal.slice(0, commaIdx).trim() + ' with ' +
-                  casingVal.slice(commaIdx + 1).trim().toLowerCase() + '.');
-        } else if (chk('ts_sp51')) {
-            dedup.push('Confirm the casing treatment.');
+            dedup.push('Match/append pass' + appendTail + '.');
         }
         block('Deduplication', dedup);
 
@@ -295,7 +297,7 @@ window.DEPT_REGISTRY.techservices = {
 
         // ts_sp93a is free text and holds either a count ("2") or the party who
         // signs off ("Acme HQ"), so the clause has to suit both.
-        const numLetterVersions  = val('ts_sp92',  'ts_sp92n');
+        const numVersions        = val('ts_sp92',  'ts_sp92n');
         const signoffsPerVersion = val('ts_sp93a', 'ts_sp93an');
         let signoffClause = '';
         if (signoffsPerVersion) {
@@ -303,9 +305,9 @@ window.DEPT_REGISTRY.techservices = {
                 ? signoffsPerVersion + ' signoff' + (signoffsPerVersion === '1' ? '' : 's') + ' per version'
                 : 'signed off by ' + signoffsPerVersion;
         }
-        if (numLetterVersions) {
-            const isOne = parseInt(numLetterVersions, 10) === 1;
-            print.push(numLetterVersions + ' letter version' + (isOne ? '' : 's') +
+        if (numVersions) {
+            const isOne = parseInt(numVersions, 10) === 1;
+            print.push(numVersions + ' version' + (isOne ? '' : 's') +
                        (signoffClause ? ', ' + signoffClause : '') + '.');
         } else if (signoffClause) {
             print.push(cap(signoffClause) + '.');
@@ -318,6 +320,22 @@ window.DEPT_REGISTRY.techservices = {
                        (samplesAddr ? ' addressed to ' + samplesAddr : '') + '.');
         } else if (samplesAddr) {
             print.push('Samples addressed to ' + samplesAddr + '.');
+        }
+
+        // Casing ends the Print section on the tab, so it ends this paragraph
+        // (David, 2026-09-28; it was the last Deduplication sentence). Its
+        // values pair a case treatment with a punctuation treatment
+        // ("Upper/Lower, No Punctuation"). Split them so the comma inside the
+        // value does not read as a second list item.
+        const casingVal = val('ts_sp51', 'ts_sp51n');
+        if (casingVal) {
+            const commaIdx = casingVal.indexOf(',');
+            print.push(commaIdx === -1
+                ? 'Casing is ' + casingVal + '.'
+                : 'Casing is ' + casingVal.slice(0, commaIdx).trim() + ' with ' +
+                  casingVal.slice(commaIdx + 1).trim().toLowerCase() + '.');
+        } else if (chk('ts_sp51')) {
+            print.push('Confirm the casing treatment.');
         }
         block('Print', print);
 
