@@ -3110,6 +3110,9 @@ textarea.notes-multi { resize: none; overflow: hidden; min-height: 24px; line-he
   padding: 40px; text-align: center; color: var(--ink-muted); font-size: 14px;
 }
 .no-jobs-subline { display: block; margin-top: 6px; font-size: 11px; color: var(--ink-muted); }
+/* One search: where the words did find a job, as big as "No matching jobs"
+   so it is not missed (David, 2026-11-02). */
+.no-jobs-subline.search-elsewhere { font-size: 14px; }
 
 /* ════════════════════════════════════════════════════════════════
    PAGINATION

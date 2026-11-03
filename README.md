@@ -2,7 +2,7 @@
 
 A Node + Microsoft SQL Server web app. It runs on one server; everyone on the LAN uses it through a browser. Built and supported in-house by David Marra.
 
-## Upgrade to 3.0.0: do these in order
+## Upgrade to 3.1.0: do these in order
 
 About 30 minutes. Keep two hours clear. Nobody uses the app from step 2 to step 12.
 
@@ -11,7 +11,7 @@ About 30 minutes. Keep two hours clear. Nobody uses the app from step 2 to step 
 1. Tell David you are starting.
 2. Stop the service **STS WorkOrder App**.
 3. In SSMS, back up `STS_WorkOrder`.
-4. Copy the whole `C:\Apps\STS_WorkOrder` folder to `C:\Apps\STS_WorkOrder_before_3.0.0`. This copy is the way back.
+4. Copy the whole `C:\Apps\STS_WorkOrder` folder to `C:\Apps\STS_WorkOrder_before_3.1.0`. This copy is the way back.
 5. From the zip, copy every file in `DEPLOY_MANIFEST.md` into `C:\Apps\STS_WorkOrder`, replacing the old ones. Do not touch `.env`, `node_modules\` or `daemon\`.
 6. In the app folder, run `npm install`. If it suggests `npm audit fix`, do not run it.
 7. In SSMS, with your own admin login, run `sql\create-review-tables.sql` against `STS_WorkOrder`. The last result grid reads `ok` on every line.
@@ -33,13 +33,13 @@ About 30 minutes. Keep two hours clear. Nobody uses the app from step 2 to step 
    ```
 10. Start the service.
 11. Open `http://<app server address>:3000/api/health`. Check:
-    - `"version":"3.0.0"`
+    - `"version":"3.1.0"`
     - `"startedAt"` is a minute or two ago
     - `"connected":true`, `"reviews":true`, `"users":"ok"`, `"mail":"on"`
 12. Open `daemon\stsworkorderapp.out.log`. Below the newest `starting` line you see `Pasted paths: M: is ...`, `Email: opens in Outlook; links to ...`, `User list loaded` and `QC Review tables ready`.
 13. Tell David it is up. He sets up the names in the app and tells everyone to close every browser window.
 
-**If a step fails:** stop, and call David. Going back is: stop the service, rename `C:\Apps\STS_WorkOrder` to `C:\Apps\STS_WorkOrder_failed`, rename `C:\Apps\STS_WorkOrder_before_3.0.0` back to `C:\Apps\STS_WorkOrder`, start the service. Rehearsed on 2026-10-26: the old version runs as it did on a database 3.0.0 has written to (the QC Review tables are extra tables it never reads), and nothing is lost when 3.0.0 is put back later. The database backup from step 3 is not needed to go back; it is there in case something else goes wrong.
+**If a step fails:** stop, and call David. Going back is: stop the service, rename `C:\Apps\STS_WorkOrder` to `C:\Apps\STS_WorkOrder_failed`, rename `C:\Apps\STS_WorkOrder_before_3.1.0` back to `C:\Apps\STS_WorkOrder`, start the service. Rehearsed on 2026-10-26 with 3.0.0 (3.1.0 changes three page files only, not the server or the database): the old version runs as it did on a database the new one has written to (the QC Review tables are extra tables it never reads), and nothing is lost when the new one is put back later. The database backup from step 3 is not needed to go back; it is there in case something else goes wrong.
 
 The rest of this file is reference: a first install on a new server, later updates, and what each setting and log line means.
 
@@ -118,8 +118,8 @@ Steps, in order:
 
 ### New steps by version
 
-- **3.0.0:** everything is in "Upgrade to 3.0.0: do these in order" at the top of this file.
-- **Older builds:** the job status column (June 2026) and the CSR / assignee roster table (August 2026) came before 2.8.0. If either is missing, `sql\create-tables.sql` adds the status column and `sql\create-review-tables.sql` (step 7 of "Upgrade to 3.0.0") adds the roster table; both files are safe to run again. `sql\fix-user-names.sql` is a one-time cleanup: run it only if David asks.
+- **3.1.0:** everything is in "Upgrade to 3.1.0: do these in order" at the top of this file. It goes straight over 2.8.0: 3.0.0 was published but never installed.
+- **Older builds:** the job status column (June 2026) and the CSR / assignee roster table (August 2026) came before 2.8.0. If either is missing, `sql\create-tables.sql` adds the status column and `sql\create-review-tables.sql` (step 7 of "Upgrade to 3.1.0") adds the roster table; both files are safe to run again. `sql\fix-user-names.sql` is a one-time cleanup: run it only if David asks.
 
 ## Troubleshooting
 
@@ -249,10 +249,10 @@ the person onto every list they are on. Nothing in `.env` and no restart.
 `GET /api/health` returns the build:
 
 ```
-{"version":"3.0.0","startedAt":"2026-10-01T12:00:00.000Z","reviews":true,"reviewForms":{"csr":"v5673ae6c","prepress":"vf1d573c2","techservices":"ve2c9fa06"},"users":"ok","userCount":25,"mail":"on","connected":true}
+{"version":"3.1.0","startedAt":"2026-10-01T12:00:00.000Z","reviews":true,"reviewForms":{"csr":"v5673ae6c","prepress":"vf1d573c2","techservices":"ve2c9fa06"},"users":"ok","userCount":25,"mail":"on","connected":true}
 ```
 
-- **`version`** changes with every release. 3.0.0 is the build with QC Review and the user list. 2.8.0 is the build before it, with the Windows sign-in. **No `version` field** means the build is older than 2.8.0.
+- **`version`** changes with every release. 3.1.0 is the build with QC Review, the user list and one search (the job list's search also searches the Archived and Deleted jobs lists). 3.0.0 was the same without the one search, and was never installed. 2.8.0 is the build before them, with the Windows sign-in. **No `version` field** means the build is older than 2.8.0.
 - **`reviews`** is the result of the last QC Review table check, made at startup and again (at most once a minute) whenever QC Review is used: `true` when the tables are in place and usable, `false` when not (the log line says why), `"pending"` until the first check succeeds, for example if SQL Server was down when the service started. No `reviews` field means a build from before QC Review.
 - **`reviewForms`** is a short code for each QC Review checklist the service loaded from `public\js\review-items.js` at startup. Any change to a checklist changes its code. `false` means the file could not be loaded: the log line `QC REVIEW CHECKLIST UNAVAILABLE` says why. QC Review is then switched off (its window says the checklists could not be loaded) until the file is fixed and the service restarted. The rest of the app keeps working. **After swapping `review-items.js`, restart the service and have users press Ctrl+F5**: the service keeps the checklist it read at startup, while browsers load the new file, and the two must match.
 - **`users`** is the user list: `"ok"`, `"stale"` (a bad change since it last read well; it keeps the old list) or `"unavailable"` (nobody can pick a name). `userCount` is how many people are on it.
@@ -267,7 +267,7 @@ Wherever this guide says "the log" or "the service log", it means the files the
 service writes in `C:\Apps\STS_WorkOrder\daemon`:
 
 - **`stsworkorderapp.out.log`**: the normal lines. Each start begins with
-  `STS Work Order v3.0.0 starting (<date and time>)`, then the port, `Email:
+  `STS Work Order v3.1.0 starting (<date and time>)`, then the port, `Email:
   opens in Outlook` or `Email off`, `User list loaded`, `QC Review tables
   ready`.
 - **`stsworkorderapp.err.log`**: the problem lines in capitals this guide

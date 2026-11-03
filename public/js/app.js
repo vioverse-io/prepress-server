@@ -1989,12 +1989,14 @@
         const columns = 9;
         if (jobs.length === 0) {
             const spare = boardOn ? '<td class="col-qc"></td>' : '';
-            tbody.innerHTML = '<tr><td colspan="' + columns + '" class="no-jobs-table-message">' +
+            const noMatch = landingViewTab !== 'my';
+            tbody.innerHTML = '<tr><td colspan="' + columns + '" class="no-jobs-table-message' + (noMatch ? ' is-no-match' : '') + '">' +
                 (landingViewTab === 'my'
                     ? 'No jobs created by you yet.<br><span class="no-jobs-subline">Jobs you create are filed here automatically. Switch to All Jobs to see everything on the board.</span>'
                     : 'No matching jobs') +
                 '</td>' + spare + '</tr>';
             document.getElementById('paginationControls').innerHTML = '';
+            drawSearchElsewhere();
             giveBackListCursor(cursor);
             return;
         }
@@ -2080,19 +2082,9 @@
     }
 
     // ========== LANDING SEARCH (filters the job table) ==========
-    (function() {
-        const input = document.getElementById('landingSearchInput');
-        if (!input) return;
-        let debounceTimer;
-        input.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                landingSearchQuery = input.value.trim().toLowerCase();
-                landingCurrentPage = 1;
-                applyLandingFilters();
-            }, 150);
-        });
-    })();
+    // The job list's box is one of the three boxes of ONE SEARCH (below the
+    // Deleted jobs panel's code): typing in it searches the Archived and
+    // Deleted jobs lists too.
 
     // ── Server-backed data layer ──
     // jobsCache holds active jobs in memory; refreshed from server on key actions.
@@ -5685,6 +5677,7 @@
             if (res.ok) _archiveCache = await res.json();
         } catch (e) { _archiveCache = []; }
         renderArchivePage();
+        drawSearchElsewhere();
     }
 
     // The column holding both panels is hidden while both are.
@@ -5781,21 +5774,8 @@
     function setArchivePage(p) { archivePage = p; renderArchivePage(); }
     function setArchivePageSize(n) { archivePageSize = parseInt(n, 10); archivePage = 1; renderArchivePage(); }
 
-    // ── Archive search (filters the archive panel only) ──
-    // Mirrors the landing search: 150ms debounce, back to page 1 on every change.
-    (function() {
-        const input = document.getElementById('archiveSearchInput');
-        if (!input) return;
-        let debounceTimer;
-        input.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                archiveSearchQuery = input.value.trim().toLowerCase();
-                archivePage = 1;
-                renderArchivePage();
-            }, 150);
-        });
-    })();
+    // The Archived box is one of the three boxes of ONE SEARCH (below the
+    // Deleted jobs panel's code).
 
     // ========== DELETED JOBS (item 7, DELETED_QC_PLAN.md) ==========
     // A deleted job's QC record is kept: its history, every signed sheet and
@@ -5810,10 +5790,12 @@
     let deletedSearchQuery = '';
     let deletedSeq = 0;
     let deletedReply = null;
+    let deletedReplyFor = '';   // the words deletedReply answered
 
     async function renderDeletedJobs() {
         const seq = ++deletedSeq;
-        const params = new URLSearchParams({ q: deletedSearchQuery, offset: String((deletedPage - 1) * DELETED_PAGE_SIZE), limit: String(DELETED_PAGE_SIZE) });
+        const asked = deletedSearchQuery;
+        const params = new URLSearchParams({ q: asked, offset: String((deletedPage - 1) * DELETED_PAGE_SIZE), limit: String(DELETED_PAGE_SIZE) });
         let reply = null;
         let status = 0;
         try {
@@ -5824,6 +5806,7 @@
         if (seq !== deletedSeq) return;   // a newer ask is on its way
         if (reply && reply.available && Array.isArray(reply.jobs)) {
             deletedReply = reply;
+            deletedReplyFor = asked;
         } else if ((status === 503 && reply && reply.available === false) || status === 401) {
             // QC Review not set up, or no name picked: no panel, as the QC
             // column hides.
@@ -5840,6 +5823,7 @@
             return;
         }
         renderDeletedPage();
+        drawSearchElsewhere();
     }
 
     function renderDeletedPage() {
@@ -5908,19 +5892,86 @@
                 if (id && typeof window.openReview === 'function') window.openReview(id, 'prepress');
             });
         }
-        // Mirrors the Archived search: 150ms after the last key, page 1.
-        const input = document.getElementById('deletedSearchInput');
-        if (!input) return;
-        let debounceTimer;
-        input.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                deletedSearchQuery = input.value.trim().toLowerCase();
-                deletedPage = 1;
-                renderDeletedJobs();
-            }, 150);
+    })();
+
+    // ========== ONE SEARCH (David, 2026-11-02) ==========
+    // The job list's box, the Archived box and the Deleted jobs box are one
+    // search: typing in any of them puts the same words in the other two and
+    // filters all three lists, so a job number turns up in whichever list
+    // holds it, and the others say they have no match. Searching twice in two
+    // boxes was the trouble. Each list matches what it always did (the job
+    // list also the CSR and both assignees; Archived and Deleted the job
+    // number, client and project, the parts their rows show), and the job
+    // list's other filters (My Jobs, Status, Dept and the rest) stay on the
+    // job list. 150 ms after the last key, every list back to page 1, as each
+    // box did on its own. The chip's x and Clear all clear all three.
+    const SEARCH_BOX_IDS = ['landingSearchInput', 'archiveSearchInput', 'deletedSearchInput'];
+    let searchTimer = null;
+
+    function setSearchEverywhere(text, fromId) {
+        clearTimeout(searchTimer);
+        searchTimer = null;
+        SEARCH_BOX_IDS.forEach(id => {
+            if (id === fromId) return;   // never rewrite the box being typed in
+            const box = document.getElementById(id);
+            if (box && box.value !== text) box.value = text;
+        });
+        const q = String(text || '').trim().toLowerCase();
+        landingSearchQuery = q;
+        archiveSearchQuery = q;
+        deletedSearchQuery = q;
+        landingCurrentPage = 1;
+        archivePage = 1;
+        deletedPage = 1;
+        applyLandingFilters();
+        renderArchivePage();
+        // The Deleted list is searched on the server, every time, as its own
+        // box always did: a panel a failed read hid comes back with the next
+        // search that is answered.
+        renderDeletedJobs();
+    }
+
+    (function() {
+        SEARCH_BOX_IDS.forEach(id => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => setSearchEverywhere(input.value, id), 150);
+            });
         });
     })();
+
+    // Under the job list's "No matching jobs", one line saying where the
+    // search did find a job (David, 2026-11-02): on a 1366 x 768 laptop at
+    // 125% the Archived list starts below the bottom of the screen, so "No
+    // matching jobs" alone read as "no such job". Only while words are typed,
+    // and only from an answer to those words: a Deleted reply still on its
+    // way counts once it is back (each list's own read draws it again).
+    function searchFoundElsewhere() {
+        const q = landingSearchQuery;
+        if (!q) return '';
+        const archived = archiveSearchQuery === q && filteredArchive().length > 0;
+        const deleted = !!deletedReply && deletedReplyFor === q && deletedReply.matching > 0;
+        if (archived && deleted) return 'Found in the Archived list and Deleted jobs below.';
+        if (archived) return 'Found in the Archived list below.';
+        if (deleted) return 'Found in Deleted jobs below.';
+        return '';
+    }
+
+    function drawSearchElsewhere() {
+        const cell = document.querySelector('#jobTableBody .no-jobs-table-message.is-no-match');
+        if (!cell) return;
+        const where = searchFoundElsewhere();
+        const old = cell.querySelector('.search-elsewhere');
+        if (old && old.textContent === where) return;
+        if (old) old.remove();
+        if (!where) return;
+        const line = document.createElement('span');
+        line.className = 'no-jobs-subline search-elsewhere';
+        line.textContent = where;
+        cell.appendChild(line);
+    }
 
     // ── View: an archived job's work order, read only (ARCHIVE_VIEW_PLAN) ──
     // The name or View on an Archived row opens the job as it was stored,
@@ -12016,12 +12067,9 @@ dd { margin: 1pt 0 0 14pt; color: #3d3d56; }
         applyLandingFilters();
     }
 
+    // The three lists share one search (ONE SEARCH), so the chip clears all three.
     function clearSearchChip() {
-        landingSearchQuery = '';
-        const searchInput = document.getElementById('landingSearchInput');
-        if (searchInput) searchInput.value = '';
-        landingCurrentPage = 1;
-        applyLandingFilters();
+        setSearchEverywhere('', null);
     }
 
     function clearLandingFilters() {
@@ -12033,10 +12081,7 @@ dd { margin: 1pt 0 0 14pt; color: #3d3d56; }
         landingTimeFilter = 'all';
         landingStatusFilter = 'all';
         landingQuickFilter = 'all';
-        landingSearchQuery = '';
         landingCurrentPage = 1;
-        const searchInput = document.getElementById('landingSearchInput');
-        if (searchInput) searchInput.value = '';
         // Reset the multi-select dropdown DOM so it can't desync from state.
         ['CSR', 'Assignee', 'Client'].forEach(type => {
             const list = document.getElementById('filter' + type + 'List');
@@ -12047,7 +12092,9 @@ dd { margin: 1pt 0 0 14pt; color: #3d3d56; }
         const updatedCtrl = document.getElementById('updatedControl');
         if (updatedCtrl) updatedCtrl.classList.remove('has-selection');
         document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
-        applyLandingFilters();
+        // The search is the three lists' (ONE SEARCH): clearing it clears all
+        // three boxes and draws the job list.
+        setSearchEverywhere('', null);
     }
 
     // ========== REQUIRED FIELDS (B+A) ==========
